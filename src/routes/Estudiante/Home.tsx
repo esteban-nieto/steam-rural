@@ -8,11 +8,11 @@ const ACTIVIDADES = [
   { id: 'puente', title: 'Puente de papel', description: 'Pronto — estructura y peso', badge: 'Ingeniería', meta: 'Muy pronto' },
 ]
 
-export function EstudianteHome({ onSelect }: { onSelect: (id: string) => void }) {
+export function EstudianteHome({ onSelect, onBack }: { onSelect: (id: string) => void; onBack: () => void }) {
   const [emocion, setEmocion] = useState<string>()
 
   return (
-    <Layout title="Actividades">
+    <Layout title="Actividades" onBack={onBack}>
       <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 mb-6 paper-texture">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[11px] font-bold tracking-[0.14em] uppercase bg-mist text-paramo px-2 py-1 rounded-full">Entrada a clase</span>

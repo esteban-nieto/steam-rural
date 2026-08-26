@@ -9,12 +9,18 @@ export function Registro({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const getErrorMessage = (msg: string) => {
+    if (msg.includes('over_email_send_rate_limit')) return 'Demasiados intentos. Espera un minuto antes de reintentar.'
+    if (msg.includes('User already registered')) return 'Ya existe una cuenta con ese correo. Intenta ingresar.'
+    return msg
+  }
+
   const handleRegistro = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     const { error } = await (supabase.auth as any).signUp({ email, password, options: { data: { nombre } } })
-    if (error) setError(error.message)
+    if (error) setError(getErrorMessage(error.message))
     else onSuccess()
     setLoading(false)
   }

@@ -141,7 +141,7 @@ export default function App() {
       </div>
     )
 
-  if (view === 'estudiante') return <EstudianteHome onSelect={(id) => (id === 'origami' ? setView('origami') : null)} />
+  if (view === 'estudiante') return <EstudianteHome onSelect={(id) => (id === 'origami' ? setView('origami') : null)} onBack={() => setView('selector')} />
   if (view === 'origami') return <OrigamiDetalle onBack={() => setView('estudiante')} />
   return null
 }

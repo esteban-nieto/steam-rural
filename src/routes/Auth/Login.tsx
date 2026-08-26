@@ -8,12 +8,19 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const getErrorMessage = (msg: string) => {
+    if (msg.includes('Invalid login credentials')) return 'Correo o contraseña incorrectos. Verifica tus datos o regístrate si no tienes cuenta.'
+    if (msg.includes('Email not confirmed')) return 'Debes confirmar tu correo antes de ingresar. Revisa tu bandeja de entrada.'
+    if (msg.includes('over_email_send_rate_limit')) return 'Demasiados intentos. Espera un minuto antes de reintentar.'
+    return msg
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     const { error } = await (supabase.auth as any).signInWithPassword({ email, password })
-    if (error) setError(error.message)
+    if (error) setError(getErrorMessage(error.message))
     else onSuccess()
     setLoading(false)
   }
