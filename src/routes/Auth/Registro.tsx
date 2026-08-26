@@ -9,19 +9,29 @@ export function Registro({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const getErrorMessage = (msg: string) => {
-    if (msg.includes('over_email_send_rate_limit')) return 'Demasiados intentos. Espera un minuto antes de reintentar.'
+  const getErrorMessage = (msg: string, status?: number) => {
+    if (status === 429 || msg.toLowerCase().includes('too many requests') || msg.toLowerCase().includes('rate limit') || msg.includes('over_email_send_rate_limit'))
+      return 'Demasiados intentos. Supabase te bloqueó 60s. Espera un minuto y usa un correo nuevo si es tu primer registro.'
     if (msg.includes('User already registered')) return 'Ya existe una cuenta con ese correo. Intenta ingresar.'
     return msg
   }
 
+  const [cooldown, setCooldown] = useState(0)
+
   const handleRegistro = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (cooldown > 0) return
     setLoading(true)
     setError('')
     const { error } = await (supabase.auth as any).signUp({ email, password, options: { data: { nombre } } })
-    if (error) setError(getErrorMessage(error.message))
-    else onSuccess()
+    if (error) {
+      const isRate = error.status === 429 || error.message.toLowerCase().includes('too many requests')
+      setError(getErrorMessage(error.message, error.status))
+      if (isRate) {
+        setCooldown(60)
+        const t = setInterval(() => setCooldown((c) => (c <= 1 ? (clearInterval(t), 0) : c - 1)), 1000)
+      }
+    } else onSuccess()
     setLoading(false)
   }
 
@@ -37,8 +47,8 @@ export function Registro({ onSuccess }: { onSuccess: () => void }) {
         <input className="bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30" placeholder="Correo" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input className="bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30" placeholder="Contraseña" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p className="text-red-600 text-[13px] bg-red-50 border border-red-100 rounded-xl px-3 py-2">{error}</p>}
-        <button disabled={loading} className="bg-clay text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#a65e2a] transition disabled:opacity-50">
-          {loading ? 'Creando...' : 'Crear cuenta'}
+        <button disabled={loading || cooldown > 0} className="bg-clay text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#a65e2a] transition disabled:opacity-50">
+          {cooldown > 0 ? `Espera ${cooldown}s` : loading ? 'Creando...' : 'Crear cuenta'}
         </button>
       </form>
     </div>
