@@ -51,19 +51,13 @@ export default function App() {
 
           <section className="py-8 sm:py-12 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
             <div>
-              <p className="text-[11px] font-bold tracking-[0.16em] uppercase text-clay mb-3">Santa Rita · Buenos Aires · Material reciclado</p>
+              <p className="text-[11px] font-bold tracking-[0.16em] uppercase text-clay mb-3">Santa Rita · Buenos Aires</p>
               <h1 className="font-display font-extrabold text-[38px] sm:text-[52px] leading-[0.95] tracking-[-0.03em] text-ink">
                 Dobla papel,
                 <br />
                 <span className="text-paramo">construye</span> ideas.
               </h1>
-              <p className="text-[15px] leading-relaxed text-ink/60 mt-4 max-w-[46ch]">
-                Talleres de robótica creativa y STEAM para escuelas rurales. Sin internet, en tu propia aula: guías paso a paso, origami y seguimiento del progreso.
-              </p>
-              <div className="flex gap-3 mt-6">
-                <span className="text-[11px] font-semibold tracking-widest uppercase bg-white border border-[#E8E0D0] px-3 py-1.5 rounded-full text-ink/70">Offline primero</span>
-                <span className="text-[11px] font-semibold tracking-widest uppercase bg-white border border-[#E8E0D0] px-3 py-1.5 rounded-full text-ink/70">PWA instalable</span>
-              </div>
+              <p className="text-[15px] leading-relaxed text-ink/60 mt-4 max-w-[46ch]">Talleres de robótica creativa y STEAM para escuelas rurales.</p>
             </div>
 
             <div className="relative">
@@ -73,11 +67,11 @@ export default function App() {
                   <div className="w-[140px] h-[110px] sm:w-[160px] sm:h-[126px] drop-shadow-sm">
                     <Crane />
                   </div>
-                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Grulla · Paso 3/7</div>
+                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · Paso 3/9</div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-[11px] font-bold tracking-widest uppercase text-moss">Figura destacada</span>
-                  <span className="text-[12px] font-semibold text-ink/50">Papel reciclado · 7 pasos</span>
+                  <span className="text-[12px] font-semibold text-ink/50">Papel reciclado · 9 pasos</span>
                 </div>
               </div>
               <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full rounded-[28px] bg-clay/10 border border-clay/10" />

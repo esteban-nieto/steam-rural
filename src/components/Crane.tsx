@@ -1,6 +1,6 @@
 export function Crane({ className = 'w-full h-full' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 200 160" className={className} role="img" aria-label="Grulla de origami en papel reciclado">
+    <svg viewBox="0 0 200 160" className={className} role="img" aria-label="Conejo de origami en papel reciclado">
       <defs>
         <linearGradient id="paperGrad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#FFFFFF" />

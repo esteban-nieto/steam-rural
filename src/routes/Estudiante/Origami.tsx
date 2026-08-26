@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
 
+const base = import.meta.env.BASE_URL
 const PASOS_EJEMPLO = [
-  { img: '/origami/paso1.jpg', desc: 'Dobla el papel a la mitad formando un triángulo. Marca bien el doblez con la uña.' },
-  { img: '/origami/paso2.jpg', desc: 'Abre y dobla las esquinas superiores hacia el centro. Deben encontrarse en la línea del medio.' },
-  { img: '/origami/paso3.jpg', desc: 'Pliega la base hacia arriba. Ya tienes la forma inicial de la grulla.' },
+  { img: `${base}origami/conejo/Paso%201.jpeg`, desc: 'Paso 1: Dobla el papel a la mitad formando un triángulo. Marca bien el doblez.' },
+  { img: `${base}origami/conejo/Paso%202.jpeg`, desc: 'Paso 2: Abre y dobla las esquinas hacia el centro.' },
+  { img: `${base}origami/conejo/Paso%203.jpeg`, desc: 'Paso 3: Pliega la base hacia arriba y define el cuerpo.' },
+  { img: `${base}origami/conejo/Paso%204.jpeg`, desc: 'Paso 4: Forma las orejas del conejo doblando las puntas.' },
+  { img: `${base}origami/conejo/Paso%205.jpeg`, desc: 'Paso 5: Ajusta los pliegues para dar volumen.' },
+  { img: `${base}origami/conejo/Paso%206.jpeg`, desc: 'Paso 6: Dobla la parte inferior para la base.' },
+  { img: `${base}origami/conejo/Paso%207.jpeg`, desc: 'Paso 7: Marca los detalles de la cara.' },
+  { img: `${base}origami/conejo/Paso%208.jpeg`, desc: 'Paso 8: Refina los bordes y orejas.' },
+  { img: `${base}origami/conejo/Paso%209.jpeg`, desc: 'Paso 9: ¡Conejo terminado! Revisa que todos los pliegues estén definidos.' },
 ]
 
 export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
@@ -23,7 +30,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
   const progreso = PASOS_EJEMPLO.length ? Math.round((completados.size / PASOS_EJEMPLO.length) * 100) : 0
 
   return (
-    <Layout title="Origami · Grulla" onBack={onBack}>
+    <Layout title="Origami · Conejo" onBack={onBack}>
       <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper overflow-hidden paper-texture">
         <div className="px-5 pt-5 pb-3 flex items-center justify-between">
           <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-clay px-2.5 py-1 rounded-full">Paso {paso + 1} de {PASOS_EJEMPLO.length}</span>
@@ -48,7 +55,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
             />
             <div className="hidden absolute inset-0 items-center justify-center flex-col gap-2">
               <span className="text-4xl">📄</span>
-              <span className="text-[11px] font-bold tracking-widest uppercase text-ink/30">Coloca tu imagen en public/origami/paso{paso + 1}.jpg</span>
+              <span className="text-[11px] font-bold tracking-widest uppercase text-ink/30">Imagen no disponible</span>
             </div>
           </div>
 

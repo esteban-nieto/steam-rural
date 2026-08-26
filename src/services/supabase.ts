@@ -43,13 +43,19 @@ export type Emocion = 'feliz' | 'contento' | 'neutro' | 'triste' | 'enfado'
 
 export const ACTIVIDADES_PREDETERMINADAS: Actividad[] = [
   {
-    id: 'origami-grulla',
-    titulo: 'Origami Grulla',
+    id: 'origami-conejo',
+    titulo: 'Origami Conejo',
     tipo: 'origami',
     pasos: [
-      { numero: 1, img: '/origami/grulla/paso1.jpg', descripcion: 'Dobla el papel en forma de cuadrado' },
-      { numero: 2, img: '/origami/grulla/paso2.jpg', descripcion: 'Pliega las esquinas hacia el centro' },
-      { numero: 3, img: '/origami/grulla/paso3.jpg', descripcion: 'Continúa doblando hacia arriba' }
+      { numero: 1, img: 'origami/conejo/Paso%201.jpeg', descripcion: 'Paso 1' },
+      { numero: 2, img: 'origami/conejo/Paso%202.jpeg', descripcion: 'Paso 2' },
+      { numero: 3, img: 'origami/conejo/Paso%203.jpeg', descripcion: 'Paso 3' },
+      { numero: 4, img: 'origami/conejo/Paso%204.jpeg', descripcion: 'Paso 4' },
+      { numero: 5, img: 'origami/conejo/Paso%205.jpeg', descripcion: 'Paso 5' },
+      { numero: 6, img: 'origami/conejo/Paso%206.jpeg', descripcion: 'Paso 6' },
+      { numero: 7, img: 'origami/conejo/Paso%207.jpeg', descripcion: 'Paso 7' },
+      { numero: 8, img: 'origami/conejo/Paso%208.jpeg', descripcion: 'Paso 8' },
+      { numero: 9, img: 'origami/conejo/Paso%209.jpeg', descripcion: 'Paso 9' }
     ]
   }
 ]
