@@ -46,7 +46,9 @@ export function ProfesorHome() {
           <button
             key={c}
             onClick={() => setCurso(c)}
-            className={`px-4 py-2 rounded-full text-[13px] font-bold border transition ${curso === c ? 'bg-paramo text-white border-paramo shadow-paper' : 'bg-white text-ink/70 border-[#E8E0D0] hover:border-paramo/30'}`}
+            aria-pressed={curso === c}
+            aria-label={`Curso ${c}`}
+            className={`px-4 py-2 rounded-full text-[13px] font-bold border transition focus-visible:ring-2 focus-visible:ring-terracota ${curso === c ? 'bg-slateProfesor text-white border-slateProfesor shadow-paper' : 'bg-white text-ink/70 border-[#E8E0D0] hover:border-slateProfesor/30'}`}
           >
             {c}
           </button>

@@ -7,6 +7,8 @@ import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
+import { Crane } from './components/Crane'
+import { SyncIndicator } from './components/SyncIndicator'
 
 type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami'
 
@@ -25,17 +27,26 @@ export default function App() {
     return (
       <div className="min-h-screen bg-paper paper-texture">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <nav className="h-[56px] flex items-center justify-between">
+          <nav className="h-[56px] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-paramo flex items-center justify-center text-white">◈</div>
+              <div className="w-8 h-8 rounded-lg bg-paramo flex items-center justify-center text-white" aria-hidden="true">
+                ◈
+              </div>
               <span className="font-display font-bold text-ink">STEAM Rural</span>
               <span className="hidden sm:inline text-[10px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2 py-1 rounded-full">Sumapaz</span>
             </div>
-            {!session && (
-              <button onClick={() => setView('registro')} className="text-[13px] font-semibold text-paramo border border-paramo/20 px-4 py-2 rounded-full hover:bg-white transition">
-                Soy profesor
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <SyncIndicator />
+              {!session && (
+                <button
+                  onClick={() => setView('registro')}
+                  aria-label="Crear cuenta de profesor"
+                  className="text-[13px] font-semibold text-paramo border border-paramo/20 px-4 py-2 rounded-full hover:bg-white transition focus-visible:ring-2 focus-visible:ring-terracota"
+                >
+                  Soy profesor
+                </button>
+              )}
+            </div>
           </nav>
 
           <section className="py-8 sm:py-12 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
@@ -59,7 +70,9 @@ export default function App() {
               <div className="bg-white rounded-[28px] border border-[#E8E0D0] shadow-paper p-6 sm:p-8 paper-texture">
                 <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-mist to-paper border border-[#E8E0D0] flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, #2D5016 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-                  <div className="text-[84px] sm:text-[96px] drop-shadow-sm select-none leading-none">🕊️</div>
+                  <div className="w-[140px] h-[110px] sm:w-[160px] sm:h-[126px] drop-shadow-sm">
+                    <Crane />
+                  </div>
                   <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Grulla · Paso 3/7</div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
@@ -84,10 +97,13 @@ export default function App() {
 
             <button
               onClick={() => setView(session ? 'profesor' : 'login')}
-              className="group text-left bg-paramo text-white rounded-paper shadow-paper hover:shadow-lift hover:-translate-y-1 transition-all p-6 relative overflow-hidden"
+              aria-label={session ? 'Abrir panel del profesor' : 'Iniciar sesión como profesor'}
+              className="group text-left bg-slateProfesor text-white rounded-paper shadow-paper hover:shadow-lift hover:-translate-y-1 transition-all p-6 relative overflow-hidden focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2"
             >
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
-              <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl mb-4">👩‍🏫</div>
+              <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl mb-4" aria-hidden="true">
+                👩‍🏫
+              </div>
               <h3 className="font-display font-bold text-[20px]">Panel del profesor</h3>
               <p className="text-[13px] leading-relaxed text-white/70 mt-1">Crea cursos, registra estudiantes por nombre y curso, y revisa el progreso y emociones.</p>
               <span className="inline-flex items-center gap-1 text-[12px] font-bold tracking-widest uppercase text-white/90 mt-4">{session ? 'Abrir panel →' : 'Iniciar sesión →'}</span>
