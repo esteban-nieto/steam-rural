@@ -28,5 +28,5 @@ export default defineConfig({
       }
     })
   ],
-  base: './'
+  base: '/steam-rural/'
 })
