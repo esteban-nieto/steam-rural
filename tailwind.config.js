@@ -4,11 +4,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#2e7d32',
-        secondary: '#1565c0',
-        accent: '#ff9800',
-        surface: '#f0fdf4',
+        paper: '#FDF8F0',
+        ink: '#1A2E1A',
+        paramo: '#2D5016',
+        moss: '#7A9E7E',
+        clay: '#C47A3C',
+        mist: '#E8F0E8',
+        surface: '#FDF8F0',
+        primary: '#2D5016',
+        secondary: '#7A9E7E',
+        accent: '#C47A3C',
       },
+      fontFamily: {
+        display: ['Baloo 2', 'cursive'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        paper: '0 4px 20px rgba(45,80,22,0.08), 0 1px 3px rgba(45,80,22,0.12)',
+        lift: '0 12px 32px rgba(45,80,22,0.14), 0 4px 12px rgba(45,80,22,0.10)',
+      },
+      borderRadius: {
+        paper: '20px',
+      }
     },
   },
   plugins: [],

@@ -12,7 +12,7 @@ export function ProfesorHome() {
   const [nuevoCurso, setNuevoCurso] = useState('')
 
   const cargar = async () => {
-    const { data } = await supabase.from('estudiantes').select('*').eq('curso', curso)
+    const { data } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
     if (data) setEstudiantes(data as Estudiante[])
   }
 
@@ -20,8 +20,8 @@ export function ProfesorHome() {
 
   const agregar = async () => {
     if (!nombre.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data } = await supabase.from('estudiantes').insert({ nombre, curso, profesor_id: user?.id }).select().single()
+    const { data: { user } } = await (supabase.auth as any).getUser()
+    const { data } = await (supabase.from as any)('estudiantes').insert({ nombre, curso, profesor_id: user?.id }).select().single()
     if (data) setEstudiantes([...estudiantes, data as Estudiante])
     setNombre('')
   }
@@ -35,32 +35,57 @@ export function ProfesorHome() {
 
   return (
     <Layout title="Panel Profesor">
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">{estudiantes.length} estudiantes</span>
+        <span className="text-[12px] text-ink/50">en</span>
+        <span className="font-display font-bold text-ink">{curso}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6">
         {cursos.map((c) => (
-          <button key={c} onClick={() => setCurso(c)} className={`px-4 py-2 rounded-full text-sm font-semibold ${curso === c ? 'bg-primary text-white' : 'bg-white border'}`}>{c}</button>
+          <button
+            key={c}
+            onClick={() => setCurso(c)}
+            className={`px-4 py-2 rounded-full text-[13px] font-bold border transition ${curso === c ? 'bg-paramo text-white border-paramo shadow-paper' : 'bg-white text-ink/70 border-[#E8E0D0] hover:border-paramo/30'}`}
+          >
+            {c}
+          </button>
         ))}
-        <span className="flex gap-1">
-          <input value={nuevoCurso} onChange={(e) => setNuevoCurso(e.target.value)} placeholder="Nuevo curso" className="border rounded-full px-3 py-2 text-sm w-32" />
-          <button onClick={crearCurso} className="bg-secondary text-white rounded-full px-3 text-sm">+ Curso</button>
+        <span className="flex gap-1.5 bg-white border border-[#E8E0D0] rounded-full p-1">
+          <input value={nuevoCurso} onChange={(e) => setNuevoCurso(e.target.value)} placeholder="Nuevo curso" className="bg-transparent px-3 text-[13px] w-28 outline-none placeholder:text-ink/30" />
+          <button onClick={crearCurso} className="bg-ink text-white rounded-full px-3 text-[12px] font-bold">+ Curso</button>
         </span>
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-4 mb-6">
-        <h3 className="font-bold mb-3">Agregar estudiante — {curso}</h3>
+      <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-5 mb-6 paper-texture">
+        <h3 className="font-display font-bold text-ink mb-1">Agregar estudiante</h3>
+        <p className="text-[12px] text-ink/50 mb-3">Solo nombre y curso — el registro de emociones y progreso se hace en clase.</p>
         <div className="flex gap-2">
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del estudiante" className="flex-1 border rounded-lg px-3 py-2" />
-          <button onClick={agregar} className="bg-primary text-white px-6 rounded-lg font-semibold">Agregar</button>
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Ana María" className="flex-1 bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:border-paramo/30 focus:bg-white" />
+          <button onClick={agregar} className="bg-paramo text-white px-6 rounded-full font-bold text-[13px] tracking-wide hover:bg-[#1e3a0f] transition">Agregar</button>
         </div>
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-3">
         {estudiantes.map((e) => (
-          <div key={e.id} className="bg-white rounded-xl p-4 flex justify-between items-center border">
-            <span className="font-medium">{e.nombre}</span>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{e.curso}</span>
+          <div key={e.id} className="group bg-white rounded-2xl border border-[#E8E0D0] p-4 flex items-center gap-4 hover:shadow-paper hover:-translate-y-0.5 transition-all">
+            <div className="w-10 h-10 rounded-full bg-mist border border-moss/20 flex items-center justify-center font-display font-bold text-paramo">
+              {e.nombre.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-[14px] text-ink leading-none">{e.nombre}</p>
+              <p className="text-[11px] font-bold tracking-widest uppercase text-moss">{e.curso}</p>
+            </div>
+            <span className="text-[11px] font-semibold text-ink/30 group-hover:text-ink/60">Ver progreso →</span>
           </div>
         ))}
-        {estudiantes.length === 0 && <p className="text-center text-gray-400 py-8">Sin estudiantes en {curso}</p>}
+        {estudiantes.length === 0 && (
+          <div className="bg-white rounded-paper border border-dashed border-[#E8E0D0] p-10 text-center">
+            <p className="text-2xl mb-2">📋</p>
+            <p className="font-display font-bold text-ink">Sin estudiantes en {curso}</p>
+            <p className="text-[13px] text-ink/50">Agrega el primer nombre arriba.</p>
+          </div>
+        )}
       </div>
     </Layout>
   )

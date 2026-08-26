@@ -4,26 +4,35 @@ import { EmotionPicker } from '../../components/EmotionPicker'
 import { Layout } from '../../components/Layout'
 
 const ACTIVIDADES = [
-  { id: 'origami', title: 'Origamis', description: 'Crea figuras con papel', image: '/origami/cover.jpg' },
+  { id: 'origami', title: 'Origamis', description: 'Dobla papel y crea figuras — cada tarjeta es una figura distinta', badge: 'STEAM', meta: '3 figuras · Papel reciclado' },
+  { id: 'puente', title: 'Puente de papel', description: 'Pronto — estructura y peso', badge: 'Ingeniería', meta: 'Muy pronto' },
 ]
 
 export function EstudianteHome({ onSelect }: { onSelect: (id: string) => void }) {
   const [emocion, setEmocion] = useState<string>()
 
   return (
-    <Layout title="Zona Estudiante">
-      <div className="bg-white rounded-2xl p-6 mb-6 text-center">
-        <h2 className="font-bold text-lg mb-2">¿Cómo te sientes hoy?</h2>
+    <Layout title="Actividades">
+      <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 mb-6 paper-texture">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase bg-mist text-paramo px-2 py-1 rounded-full">Entrada a clase</span>
+          <span className="text-[12px] text-ink/40">¿Cómo llegas hoy?</span>
+        </div>
+        <h2 className="font-display font-bold text-[22px] text-ink mb-4">¿Cómo te sientes al entrar?</h2>
         <EmotionPicker value={emocion} onSelect={setEmocion} />
-        {emocion && <p className="text-sm text-gray-500 mt-2">¡Gracias por compartir cómo te sientes!</p>}
+        {emocion && <p className="text-center text-[12px] font-medium text-moss mt-3">¡Gracias! Tu profe verá tu emoción de entrada.</p>}
       </div>
 
-      <h3 className="font-bold mb-3">Actividades STEAM</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display font-bold text-[18px] text-ink">Talleres STEAM</h3>
+        <span className="text-[11px] font-bold tracking-widest uppercase text-ink/40">Toca una tarjeta</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {ACTIVIDADES.map((a) => (
-          <Card key={a.id} title={a.title} description={a.description} onClick={() => onSelect(a.id)} />
+          <Card key={a.id} title={a.title} description={a.description} badge={a.badge} meta={a.meta} onClick={() => a.id === 'origami' && onSelect(a.id)} />
         ))}
       </div>
+      <p className="text-center text-[11px] text-ink/30 mt-6">Más actividades STEAM se agregarán como nuevas tarjetas.</p>
     </Layout>
   )
 }
