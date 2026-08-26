@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff,woff2,ttf,otf}'],
+      },
       manifest: {
         name: 'Software STEAM Rural',
         short_name: 'STEAM',
