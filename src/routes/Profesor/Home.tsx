@@ -233,28 +233,30 @@ export function ProfesorHome() {
                   <h4 className="font-display font-bold text-ink mb-3">Historial por día</h4>
                   <div className="space-y-3 max-h-64 overflow-auto pr-1">
                     {(() => {
-                      const grupos: Record<string, any[]> = {}
+                      const porDia = new Map<string, any>()
                       historial.forEach((h: any) => {
                         const d = new Date(h.fecha)
-                        const key = d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                        if (!grupos[key]) grupos[key] = []
-                        grupos[key].push(h)
+                        const key = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
+                        if (!porDia.has(key) || new Date(h.fecha) > new Date(porDia.get(key).fecha)) porDia.set(key, h)
                       })
-                      return Object.entries(grupos).map(([fecha, items]) => (
-                        <div key={fecha} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
-                          <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-ink px-2 py-1 rounded-full inline-block mb-2">{fecha}</p>
-                          {items.map((it: any) => (
-                            <div key={it.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b last:border-0 border-[#E8E0D0]/50">
-                              <span className="text-lg leading-none" aria-label={`Entrada ${it.emocion_inicio}`}>{EMOJI_MAP[it.emocion_inicio] || '—'}</span>
+                      return Array.from(porDia.entries()).map(([fecha, it]: any) => {
+                        const total = 10
+                        const hechos = it.pasos_completados?.length || 0
+                        const estado = hechos === total ? 'Terminó Origami Conejo' : hechos === 0 ? 'Sin avance' : `Quedó en paso ${hechos}/${total}`
+                        return (
+                          <div key={fecha} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
+                            <p className="text-[12px] font-bold tracking-wide text-ink capitalize">{fecha}</p>
+                            <div className="flex items-center gap-2 mt-2 text-[13px]">
+                              <span className="text-[11px] font-bold tracking-widest uppercase text-ink/50">Inicio</span>
+                              <span className="text-lg leading-none">{EMOJI_MAP[it.emocion_inicio] || '—'}</span>
                               <span className="text-ink/30">→</span>
-                              <span className="text-lg leading-none" aria-label={`Salida ${it.emocion_fin}`}>{EMOJI_MAP[it.emocion_fin] || '—'}</span>
-                              <span className="ml-auto text-[11px] font-medium text-ink/60 bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">
-                                {it.pasos_completados?.length || 0}/10 pasos · {it.estado}
-                              </span>
+                              <span className="text-[11px] font-bold tracking-widest uppercase text-ink/50">Fin</span>
+                              <span className="text-lg leading-none">{EMOJI_MAP[it.emocion_fin] || '—'}</span>
                             </div>
-                          ))}
-                        </div>
-                      ))
+                            <p className="text-[12px] font-medium text-ink/70 mt-2 bg-paper border border-[#E8E0D0] rounded-full px-3 py-1 inline-block">{estado}</p>
+                          </div>
+                        )
+                      })
                     })()}
                   </div>
                 </div>
