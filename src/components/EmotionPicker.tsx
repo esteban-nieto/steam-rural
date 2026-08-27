@@ -8,7 +8,7 @@ const EMOJIS = [
 
 export function EmotionPicker({ value, onSelect }: { value?: string; onSelect: (id: string) => void }) {
   return (
-    <div role="radiogroup" aria-label="Selecciona cómo te sientes" className="flex gap-2 sm:gap-3 justify-center flex-wrap">
+    <div role="radiogroup" aria-label="Selecciona cómo te sientes" className="flex gap-2 sm:gap-3 justify-center flex-wrap py-2 px-1 overflow-visible">
       {EMOJIS.map((e) => {
         const selected = value === e.id
         return (
