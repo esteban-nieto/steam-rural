@@ -63,15 +63,18 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
           <p className="text-center font-medium text-[14px] leading-relaxed text-ink mt-4 px-2">{PASOS_EJEMPLO[paso].desc}</p>
 
           <div className="flex gap-2 justify-center mt-5">
-            <button disabled={paso === 0} onClick={() => setPaso(paso - 1)} className="px-4 py-2.5 rounded-full border border-[#E8E0D0] bg-white text-[13px] font-semibold disabled:opacity-30 hover:bg-paper">
+            <button disabled={paso === 0} onClick={() => setPaso(paso - 1)} className="px-5 py-2.5 rounded-full border border-[#E8E0D0] bg-white text-[13px] font-semibold disabled:opacity-30 hover:bg-paper">
               ← Anterior
             </button>
-            <button onClick={marcar} className={`px-6 py-2.5 rounded-full font-bold text-[13px] tracking-wide transition ${completados.has(paso) ? 'bg-mist text-paramo border border-moss/20' : 'bg-paramo text-white shadow-paper hover:bg-[#1e3a0f]'}`}>
-              {completados.has(paso) ? '✓ Completado' : 'Marcar completado'}
-            </button>
-            <button disabled={paso === PASOS_EJEMPLO.length - 1} onClick={() => setPaso(paso + 1)} className="px-4 py-2.5 rounded-full border border-[#E8E0D0] bg-white text-[13px] font-semibold disabled:opacity-30 hover:bg-paper">
-              Siguiente →
-            </button>
+            {paso === PASOS_EJEMPLO.length - 1 ? (
+              <button onClick={marcar} className={`px-6 py-2.5 rounded-full font-bold text-[13px] tracking-wide transition ${completados.has(paso) ? 'bg-mist text-paramo border border-moss/20' : 'bg-paramo text-white shadow-paper hover:bg-[#1e3a0f]'}`}>
+                {completados.has(paso) ? '✓ Completado' : 'Completar'}
+              </button>
+            ) : (
+              <button onClick={() => setPaso(paso + 1)} className="px-5 py-2.5 rounded-full border border-[#E8E0D0] bg-white text-[13px] font-semibold hover:bg-paper">
+                Siguiente →
+              </button>
+            )}
           </div>
         </div>
       </div>
