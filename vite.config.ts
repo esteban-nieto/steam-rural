@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff,woff2,ttf,otf}'],
+        globPatterns: ['**/*.{js,css,html,woff,woff2,ttf,otf,png,jpg,jpeg,svg}'],
       },
       manifest: {
         name: 'Software STEAM Rural',

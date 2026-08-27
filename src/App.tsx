@@ -7,7 +7,6 @@ import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
-import { Crane } from './components/Crane'
 import { SyncIndicator } from './components/SyncIndicator'
 
 type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami'
@@ -63,11 +62,8 @@ export default function App() {
             <div className="relative">
               <div className="bg-white rounded-[28px] border border-[#E8E0D0] shadow-paper p-6 sm:p-8 paper-texture">
                 <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-mist to-paper border border-[#E8E0D0] flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, #2D5016 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-                  <div className="w-[140px] h-[110px] sm:w-[160px] sm:h-[126px] drop-shadow-sm">
-                    <Crane />
-                  </div>
-                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · Paso 3/9</div>
+                  <img src={`${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`} alt="Origami Conejo terminado en papel reciclado" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · 9 pasos</div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-[11px] font-bold tracking-widest uppercase text-moss">Figura destacada</span>
