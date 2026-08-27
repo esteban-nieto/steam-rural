@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../services/supabase'
 import type { Estudiante } from '../../services/supabase'
 import { Layout } from '../../components/Layout'
+import { EmotionPicker } from '../../components/EmotionPicker'
+import { db, guardarProgresoLocal } from '../../services/db'
 
 export function ProfesorHome() {
   const [curso, setCurso] = useState('3A')
@@ -10,6 +12,12 @@ export function ProfesorHome() {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [nombre, setNombre] = useState('')
   const [nuevoCurso, setNuevoCurso] = useState('')
+  const [seleccionado, setSeleccionado] = useState<Estudiante | null>(null)
+  const [emocionInicio, setEmocionInicio] = useState<string>()
+  const [emocionFin, setEmocionFin] = useState<string>()
+  const [pasos, setPasos] = useState<Set<number>>(new Set())
+  const [guardando, setGuardando] = useState(false)
+  const [mensaje, setMensaje] = useState('')
 
   const cargar = async () => {
     const { data } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
@@ -31,6 +39,66 @@ export function ProfesorHome() {
     setCursos([...cursos, nuevoCurso])
     setCurso(nuevoCurso)
     setNuevoCurso('')
+  }
+
+  const abrirEstudiante = async (e: Estudiante) => {
+    setSeleccionado(e)
+    setEmocionInicio(undefined)
+    setEmocionFin(undefined)
+    setPasos(new Set())
+    setMensaje('')
+    try {
+      const { data } = await (supabase.from as any)('progresos').select('*').eq('estudiante_id', e.id).order('fecha', { ascending: false }).limit(1).single()
+      if (data) {
+        setEmocionInicio(data.emocion_inicio || undefined)
+        setEmocionFin(data.emocion_fin || undefined)
+        setPasos(new Set(data.pasos_completados || []))
+      } else {
+        const local = await db.progresos.where('estudiante_id').equals(e.id).toArray()
+        if (local.length > 0) {
+          const ultimo = local[local.length - 1] as any
+          setEmocionInicio(ultimo.emocion_inicio || undefined)
+          setEmocionFin(ultimo.emocion_fin || undefined)
+          setPasos(new Set(ultimo.pasos_completados || []))
+        }
+      }
+    } catch {}
+  }
+
+  const togglePaso = (n: number) => {
+    const next = new Set(pasos)
+    if (next.has(n)) next.delete(n)
+    else next.add(n)
+    setPasos(next)
+  }
+
+  const guardarProgreso = async () => {
+    if (!seleccionado) return
+    if (!emocionInicio && pasos.size === 0) {
+      setMensaje('Elige al menos emoción de entrada o un paso')
+      return
+    }
+    setGuardando(true)
+    const progreso: any = {
+      id: crypto.randomUUID(),
+      estudiante_id: seleccionado.id,
+      actividad_id: 'origami-conejo',
+      estado: pasos.size === 9 ? 'completado' : pasos.size > 0 ? 'en_progreso' : 'pendiente',
+      pasos_completados: Array.from(pasos),
+      emocion_inicio: emocionInicio || '',
+      emocion_fin: emocionFin || null,
+      fecha: new Date().toISOString(),
+    }
+    try {
+      await guardarProgresoLocal(progreso)
+      const { error } = await (supabase.from as any)('progresos').insert(progreso)
+      if (error) throw error
+      setMensaje('✓ Guardado en la nube')
+    } catch {
+      setMensaje('✓ Guardado local (se sincronizará)')
+    }
+    setGuardando(false)
+    setTimeout(() => setMensaje(''), 2500)
   }
 
   return (
@@ -70,16 +138,21 @@ export function ProfesorHome() {
 
       <div className="grid gap-3">
         {estudiantes.map((e) => (
-          <div key={e.id} className="group bg-white rounded-2xl border border-[#E8E0D0] p-4 flex items-center gap-4 hover:shadow-paper hover:-translate-y-0.5 transition-all">
+          <button
+            key={e.id}
+            onClick={() => abrirEstudiante(e)}
+            className="group w-full text-left bg-white rounded-2xl border border-[#E8E0D0] p-4 flex items-center gap-4 hover:shadow-paper hover:-translate-y-0.5 transition-all focus-visible:ring-2 focus-visible:ring-terracota text-ink"
+            aria-label={`Ver detalle de ${e.nombre}`}
+          >
             <div className="w-10 h-10 rounded-full bg-mist border border-moss/20 flex items-center justify-center font-display font-bold text-paramo">
               {e.nombre.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-[14px] text-ink leading-none">{e.nombre}</p>
+              <p className="font-semibold text-[14px] leading-none">{e.nombre}</p>
               <p className="text-[11px] font-bold tracking-widest uppercase text-moss">{e.curso}</p>
             </div>
-            <span className="text-[11px] font-semibold text-ink/30 group-hover:text-ink/60">Ver progreso →</span>
-          </div>
+            <span className="text-[11px] font-semibold text-ink/30 group-hover:text-ink/60">Registrar →</span>
+          </button>
         ))}
         {estudiantes.length === 0 && (
           <div className="bg-white rounded-paper border border-dashed border-[#E8E0D0] p-10 text-center">
@@ -89,6 +162,53 @@ export function ProfesorHome() {
           </div>
         )}
       </div>
+
+      {seleccionado && (
+        <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setSeleccionado(null)} aria-hidden="true" />
+          <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-full max-w-lg max-h-[90vh] overflow-auto paper-texture">
+            <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
+              <div>
+                <p className="font-display font-bold text-ink">{seleccionado.nombre}</p>
+                <p className="text-[11px] font-bold tracking-widest uppercase text-moss">{seleccionado.curso}</p>
+              </div>
+              <button onClick={() => setSeleccionado(null)} className="w-8 h-8 rounded-full bg-white border border-[#E8E0D0] flex items-center justify-center hover:bg-mist" aria-label="Cerrar">
+                ×
+              </button>
+            </div>
+            <div className="p-5 space-y-6">
+              <div>
+                <h4 className="font-display font-bold text-ink mb-2">¿Cómo se siente al entrar?</h4>
+                <EmotionPicker value={emocionInicio} onSelect={setEmocionInicio} />
+              </div>
+              <div>
+                <h4 className="font-display font-bold text-ink mb-2">¿Cómo se siente al finalizar?</h4>
+                <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
+              </div>
+              <div>
+                <h4 className="font-display font-bold text-ink mb-2">Progreso Origami Conejo (9 pasos)</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => togglePaso(n)}
+                      aria-pressed={pasos.has(n)}
+                      className={`p-3 rounded-xl border text-sm font-semibold transition ${pasos.has(n) ? 'bg-paramo text-white border-paramo' : 'bg-white border-[#E8E0D0] hover:border-paramo/30'}`}
+                    >
+                      Paso {n} {pasos.has(n) ? '✓' : ''}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-ink/50 mt-2">{pasos.size}/9 pasos completados</p>
+              </div>
+              {mensaje && <p className="text-center text-[13px] font-medium text-moss bg-mist border border-moss/20 rounded-xl px-3 py-2">{mensaje}</p>}
+              <button onClick={guardarProgreso} disabled={guardando} className="w-full bg-paramo text-white rounded-full py-3 font-bold hover:bg-[#1e3a0f] disabled:opacity-50">
+                {guardando ? 'Guardando...' : 'Guardar registro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
