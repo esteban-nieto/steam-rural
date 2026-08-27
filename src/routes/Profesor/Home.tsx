@@ -18,6 +18,7 @@ export function ProfesorHome() {
   const [pasos, setPasos] = useState<Set<number>>(new Set())
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [historial, setHistorial] = useState<any[]>([])
 
   const cargar = async () => {
     const { data } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
@@ -41,12 +42,31 @@ export function ProfesorHome() {
     setNuevoCurso('')
   }
 
+  const EMOJI_MAP: Record<string, string> = { feliz: '😄', contento: '🙂', neutro: '😐', triste: '😔', enfado: '😠' }
+
+  const cargarHistorial = async (estudianteId: string) => {
+    try {
+      const { data } = await (supabase.from as any)('progresos').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
+      if (data && data.length > 0) {
+        setHistorial(data)
+        return
+      }
+    } catch {}
+    try {
+      const localAll = await db.progresos.where('estudiante_id').equals(estudianteId).toArray()
+      setHistorial([...localAll].reverse())
+    } catch {
+      setHistorial([])
+    }
+  }
+
   const abrirEstudiante = async (e: Estudiante) => {
     setSeleccionado(e)
     setEmocionInicio(undefined)
     setEmocionFin(undefined)
     setPasos(new Set())
     setMensaje('')
+    setHistorial([])
     try {
       const { data } = await (supabase.from as any)('progresos').select('*').eq('estudiante_id', e.id).order('fecha', { ascending: false }).limit(1).single()
       if (data) {
@@ -63,6 +83,7 @@ export function ProfesorHome() {
         }
       }
     } catch {}
+    cargarHistorial(e.id)
   }
 
   const togglePaso = (n: number) => {
@@ -97,6 +118,7 @@ export function ProfesorHome() {
     } catch {
       setMensaje('✓ Guardado local (se sincronizará)')
     }
+    setHistorial((prev) => [progreso, ...prev])
     setGuardando(false)
     setTimeout(() => setMensaje(''), 2500)
   }
@@ -205,6 +227,38 @@ export function ProfesorHome() {
               <button onClick={guardarProgreso} disabled={guardando} className="w-full bg-paramo text-white rounded-full py-3 font-bold hover:bg-[#1e3a0f] disabled:opacity-50">
                 {guardando ? 'Guardando...' : 'Guardar registro'}
               </button>
+
+              {historial.length > 0 && (
+                <div className="border-t border-[#E8E0D0] pt-4">
+                  <h4 className="font-display font-bold text-ink mb-3">Historial por día</h4>
+                  <div className="space-y-3 max-h-64 overflow-auto pr-1">
+                    {(() => {
+                      const grupos: Record<string, any[]> = {}
+                      historial.forEach((h: any) => {
+                        const d = new Date(h.fecha)
+                        const key = d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        if (!grupos[key]) grupos[key] = []
+                        grupos[key].push(h)
+                      })
+                      return Object.entries(grupos).map(([fecha, items]) => (
+                        <div key={fecha} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
+                          <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-ink px-2 py-1 rounded-full inline-block mb-2">{fecha}</p>
+                          {items.map((it: any) => (
+                            <div key={it.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b last:border-0 border-[#E8E0D0]/50">
+                              <span className="text-lg leading-none" aria-label={`Entrada ${it.emocion_inicio}`}>{EMOJI_MAP[it.emocion_inicio] || '—'}</span>
+                              <span className="text-ink/30">→</span>
+                              <span className="text-lg leading-none" aria-label={`Salida ${it.emocion_fin}`}>{EMOJI_MAP[it.emocion_fin] || '—'}</span>
+                              <span className="ml-auto text-[11px] font-medium text-ink/60 bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">
+                                {it.pasos_completados?.length || 0}/10 pasos · {it.estado}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
