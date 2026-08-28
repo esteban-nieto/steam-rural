@@ -70,7 +70,7 @@ export function Registro({ onSuccess }: { onSuccess: () => void }) {
           <input className="bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30" placeholder="Correo" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <input className="bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30" placeholder="Contraseña" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {error && <p className="text-red-600 text-[13px] bg-red-50 border border-red-100 rounded-xl px-3 py-2">{error}</p>}
-          <button type="submit" disabled={loading || cooldown > 0} className="bg-clay text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#a65e2a] transition disabled:opacity-50 shadow-sm">
+          <button type="submit" disabled={loading || cooldown > 0} className="bg-[#C47A3C] text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#a65e2a] active:bg-[#8B4513] transition disabled:opacity-50 shadow-sm border border-[#C47A3C]">
             {cooldown > 0 ? `Espera ${cooldown}s` : loading ? 'Creando...' : 'Crear cuenta'}
           </button>
         </form>
