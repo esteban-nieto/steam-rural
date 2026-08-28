@@ -4,17 +4,17 @@ import { EmotionPicker } from '../../components/EmotionPicker'
 
 const base = import.meta.env.BASE_URL
 const PASOS_EJEMPLO = [
-  { img: `${base}origami/conejo/Paso%201.jpeg`, desc: 'Paso 1: Dobla el papel a la mitad formando un triángulo. Marca bien el doblez.' },
-  { img: `${base}origami/conejo/Paso%202.jpeg`, desc: 'Paso 2: Abre y dobla las esquinas hacia el centro.' },
-  { img: `${base}origami/conejo/Paso%203.jpeg`, desc: 'Paso 3: Pliega la base hacia arriba y define el cuerpo.' },
-  { img: `${base}origami/conejo/Paso%204.jpeg`, desc: 'Paso 4: Forma las orejas del conejo doblando las puntas.' },
-  { img: `${base}origami/conejo/Paso%205.jpeg`, desc: 'Paso 5: Ajusta los pliegues para dar volumen.' },
-  { img: `${base}origami/conejo/Paso%206.jpeg`, desc: 'Paso 6: Dobla la parte inferior para la base.' },
-  { img: `${base}origami/conejo/Paso%207.jpeg`, desc: 'Paso 7: Marca los detalles de la cara.' },
-  { img: `${base}origami/conejo/Paso%208.jpeg`, desc: 'Paso 8: Refina los bordes y orejas.' },
-  { img: `${base}origami/conejo/Paso%209.jpeg`, desc: 'Paso 9: Ajusta los últimos detalles.' },
-  { img: `${base}origami/conejo/Paso%2010.jpeg`, desc: 'Paso 10: Continúa con los detalles finales.' },
-  { img: `${base}origami/conejo/Paso%2011.jpeg`, desc: 'Paso 11: ¡Conejo terminado! Revisa que todos los pliegues estén definidos.' },
+  { img: `${base}origami/conejo/Paso%201.jpeg`, desc: 'Rota el papel como aparece en la imagen y visualiza los puntos del papel.' },
+  { img: `${base}origami/conejo/Paso%202.jpeg`, desc: 'Dobla por la mitad el papel formando un triángulo.' },
+  { img: `${base}origami/conejo/Paso%203.jpeg`, desc: 'Pliega la mitad del triángulo y vuelve a abrirlo para que se marque la línea.' },
+  { img: `${base}origami/conejo/Paso%204.jpeg`, desc: 'Dobla por la mitad el triángulo entre L, T y O.' },
+  { img: `${base}origami/conejo/Paso%205.jpeg`, desc: 'Haz lo mismo, pero esta vez con el triángulo entre L, T y R.' },
+  { img: `${base}origami/conejo/Paso%206.jpeg`, desc: 'Desdobla los triángulos hechos en los pasos 4 y 5.' },
+  { img: `${base}origami/conejo/Paso%207.jpeg`, desc: 'Une una punta de T y llévala hasta O.' },
+  { img: `${base}origami/conejo/Paso%208.jpeg`, desc: 'Como hiciste en el paso 4, vuelve a doblar el triángulo entre L, T y O.' },
+  { img: `${base}origami/conejo/Paso%209.jpeg`, desc: 'Ahora haz lo mismo, pero con el triángulo entre L, T y R.' },
+  { img: `${base}origami/conejo/Paso%2010.jpeg`, desc: 'Deberá quedarte en forma de rombo.' },
+  { img: `${base}origami/conejo/Paso%2011.jpeg`, desc: 'Ahora dobla ambas esquinas de T hacia adentro formando un bolsillo.' },
 ]
 
 export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
@@ -83,10 +83,13 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
       {progreso === 100 && (
         <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 mt-4 text-center paper-texture">
           <p className="text-3xl mb-2">🎉</p>
-          <h3 className="font-display font-bold text-[18px] text-ink">¡Figura terminada!</h3>
-          <p className="text-[13px] text-ink/60 mb-4">¿Cómo te sientes al terminar?</p>
-          <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
-          {emocionFin && <p className="text-[12px] font-medium text-paramo mt-3">¡Registrado! Tu profe verá tu progreso.</p>}
+          <h3 className="font-display font-bold text-[18px] text-ink">¡Muy bien!</h3>
+          <p className="text-[14px] leading-relaxed text-ink mt-2">Ahora decóralo como tu animal favorito y podrás llevarlo siempre en tu cuaderno.</p>
+          <div className="mt-4">
+            <p className="text-[13px] text-ink/60 mb-2">¿Cómo te sientes al terminar?</p>
+            <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
+            {emocionFin && <p className="text-[12px] font-medium text-paramo mt-3">¡Registrado! Tu profe verá tu progreso.</p>}
+          </div>
         </div>
       )}
 
