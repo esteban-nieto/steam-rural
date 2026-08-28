@@ -28,7 +28,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
     if (paso < PASOS_EJEMPLO.length - 1) setPaso(paso + 1)
   }
 
-  const progreso = PASOS_EJEMPLO.length ? Math.round((completados.size / PASOS_EJEMPLO.length) * 100) : 0
+  const progreso = PASOS_EJEMPLO.length ? Math.round(((paso + 1) / PASOS_EJEMPLO.length) * 100) : 0
 
   return (
     <Layout title="Origami · Conejo" onBack={onBack}>
