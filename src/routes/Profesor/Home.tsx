@@ -147,7 +147,7 @@ export function ProfesorHome() {
       id: crypto.randomUUID(),
       estudiante_id: seleccionado.id,
       actividad_id: 'origami-conejo',
-      estado: pasos.size === 10 ? 'completado' : pasos.size > 0 ? 'en_progreso' : 'pendiente',
+      estado: pasos.size === 11 ? 'completado' : pasos.size > 0 ? 'en_progreso' : 'pendiente',
       pasos_completados: Array.from(pasos),
       emocion_inicio: emocionInicio || '',
       emocion_fin: emocionFin || null,
@@ -251,9 +251,9 @@ export function ProfesorHome() {
                 <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
               </div>
               <div>
-                <h4 className="font-display font-bold text-ink mb-2">Progreso Origami Conejo (10 pasos)</h4>
+                <h4 className="font-display font-bold text-ink mb-2">Progreso Origami Conejo (11 pasos)</h4>
                 <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => (
                     <button
                       key={n}
                       onClick={() => togglePaso(n)}
@@ -264,7 +264,7 @@ export function ProfesorHome() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-ink/50 mt-2">{pasos.size}/10 pasos completados</p>
+                <p className="text-[11px] text-ink/50 mt-2">{pasos.size}/11 pasos completados</p>
               </div>
               {mensaje && <p className="text-center text-[13px] font-medium text-moss bg-mist border border-moss/20 rounded-xl px-3 py-2">{mensaje}</p>}
               <button onClick={guardarProgreso} disabled={guardando} className="w-full bg-paramo text-white rounded-full py-3 font-bold hover:bg-[#1e3a0f] disabled:opacity-50">
@@ -283,7 +283,7 @@ export function ProfesorHome() {
                         if (!porDia.has(key) || new Date(h.fecha) > new Date(porDia.get(key).fecha)) porDia.set(key, h)
                       })
                       return Array.from(porDia.entries()).map(([fecha, it]: any) => {
-                        const total = 10
+                        const total = 11
                         const hechos = it.pasos_completados?.length || 0
                         const estado = hechos === total ? 'Terminó Origami Conejo' : hechos === 0 ? 'Sin avance' : `Quedó en paso ${hechos}/${total}`
                         return (

@@ -12,8 +12,9 @@ const PASOS_EJEMPLO = [
   { img: `${base}origami/conejo/Paso%206.jpeg`, desc: 'Paso 6: Dobla la parte inferior para la base.' },
   { img: `${base}origami/conejo/Paso%207.jpeg`, desc: 'Paso 7: Marca los detalles de la cara.' },
   { img: `${base}origami/conejo/Paso%208.jpeg`, desc: 'Paso 8: Refina los bordes y orejas.' },
-  { img: `${base}origami/conejo/Paso%209.png`, desc: 'Paso 9: Ajusta los últimos detalles.' },
-  { img: `${base}origami/conejo/Paso%2010.png`, desc: 'Paso 10: ¡Conejo terminado! Revisa que todos los pliegues estén definidos.' },
+  { img: `${base}origami/conejo/Paso%209.jpeg`, desc: 'Paso 9: Ajusta los últimos detalles.' },
+  { img: `${base}origami/conejo/Paso%2010.jpeg`, desc: 'Paso 10: Continúa con los detalles finales.' },
+  { img: `${base}origami/conejo/Paso%2011.jpeg`, desc: 'Paso 11: ¡Conejo terminado! Revisa que todos los pliegues estén definidos.' },
 ]
 
 export function OrigamiDetalle({ onBack }: { onBack: () => void }) {

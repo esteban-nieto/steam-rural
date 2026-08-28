@@ -83,11 +83,11 @@ export default function App() {
               <div className="bg-white rounded-[28px] border border-[#E8E0D0] shadow-paper p-6 sm:p-8 paper-texture">
                 <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-mist to-paper border border-[#E8E0D0] flex items-center justify-center relative overflow-hidden">
                   <img src={`${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`} alt="Origami Conejo terminado en papel reciclado" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · 10 pasos</div>
+                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · 11 pasos</div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-[11px] font-bold tracking-widest uppercase text-moss">Figura destacada</span>
-                  <span className="text-[12px] font-semibold text-ink/50">Papel reciclado · 10 pasos</span>
+                  <span className="text-[12px] font-semibold text-ink/50">Papel reciclado · 11 pasos</span>
                 </div>
               </div>
               <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full rounded-[28px] bg-clay/10 border border-clay/10" />

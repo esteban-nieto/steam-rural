@@ -7,9 +7,9 @@ export function EstudianteHome({ onSelect, onBack }: { onSelect: (id: string) =>
       <div className="max-w-md mx-auto">
         <Card
           title="Origami Conejo"
-          description="Dobla papel y crea un conejo — 10 pasos"
+          description="Dobla papel y crea un conejo — 11 pasos"
           badge="STEAM"
-          meta="10 pasos · Papel reciclado"
+          meta="11 pasos · Papel reciclado"
           image={`${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`}
           onClick={() => onSelect('origami')}
         />
