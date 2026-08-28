@@ -17,9 +17,29 @@ export default function App() {
 
   useEffect(() => {
     initSyncListener()
-    ;(supabase.auth as any).getSession().then(({ data }: any) => setSession(!!data.session))
-    const { data: sub } = (supabase.auth as any).onAuthStateChange((_: any, s: any) => setSession(!!s))
-    return () => sub.subscription.unsubscribe()
+    const initSession = async () => {
+      if (!navigator.onLine) {
+        try {
+          const raw = localStorage.getItem('sb-phutywmnrwradaxzczwl-auth-token')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            setSession(!!parsed?.access_token || !!parsed?.currentSession)
+          }
+        } catch {}
+        return
+      }
+      try {
+        const { data } = await (supabase.auth as any).getSession()
+        setSession(!!data?.session)
+      } catch {}
+    }
+    initSession()
+    try {
+      const { data: sub } = (supabase.auth as any).onAuthStateChange((_: any, s: any) => setSession(!!s))
+      return () => sub?.subscription?.unsubscribe()
+    } catch {
+      return () => {}
+    }
   }, [])
 
   if (view === 'selector')

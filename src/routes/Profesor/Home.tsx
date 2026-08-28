@@ -21,18 +21,61 @@ export function ProfesorHome() {
   const [historial, setHistorial] = useState<any[]>([])
 
   const cargar = async () => {
-    const { data } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
-    if (data) setEstudiantes(data as Estudiante[])
+    try {
+      if (navigator.onLine) {
+        const { data, error } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
+        if (!error && data) {
+          setEstudiantes(data as Estudiante[])
+          for (const e of data as Estudiante[]) await db.estudiantes.put(e as any).catch(() => {})
+          return
+        }
+      }
+    } catch {}
+    try {
+      const local = await db.estudiantes.where('curso').equals(curso).toArray()
+      setEstudiantes(local as any)
+    } catch {
+      setEstudiantes([])
+    }
   }
 
   useEffect(() => { cargar() }, [curso])
 
   const agregar = async () => {
     if (!nombre.trim()) return
-    const { data: { user } } = await (supabase.auth as any).getUser()
-    const { data } = await (supabase.from as any)('estudiantes').insert({ nombre, curso, profesor_id: user?.id }).select().single()
-    if (data) setEstudiantes([...estudiantes, data as Estudiante])
+    const tempId = crypto.randomUUID()
+    let profesorId: string | null = null
+    try {
+      const { data: { user } } = await (supabase.auth as any).getUser()
+      profesorId = user?.id || null
+    } catch {}
+    if (!profesorId) {
+      try {
+        const localUser = localStorage.getItem('sb-phutywmnrwradaxzczwl-auth-token')
+        if (localUser) {
+          const parsed = JSON.parse(localUser)
+          profesorId = parsed?.user?.id || null
+        }
+      } catch {}
+    }
+    const nuevo: any = { id: tempId, nombre: nombre.trim(), curso, profesor_id: profesorId, created_at: new Date().toISOString() }
+    setEstudiantes((prev) => [...prev, nuevo as Estudiante])
     setNombre('')
+    try {
+      await db.estudiantes.put(nuevo)
+      await db.estudiantesPendientes.put(nuevo)
+    } catch {}
+    if (navigator.onLine && profesorId) {
+      try {
+        const { data, error } = await (supabase.from as any)('estudiantes').insert({ nombre: nuevo.nombre, curso: nuevo.curso, profesor_id: profesorId }).select().single()
+        if (!error && data) {
+          setEstudiantes((prev) => prev.map((e) => (e.id === tempId ? (data as Estudiante) : e)))
+          await db.estudiantes.put(data as any).catch(() => {})
+          await db.estudiantes.delete(tempId).catch(() => {})
+          await db.estudiantesPendientes.delete(tempId).catch(() => {})
+        }
+      } catch {}
+    }
   }
 
   const crearCurso = () => {
