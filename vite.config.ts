@@ -23,6 +23,16 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          {
+            urlPattern: /\/videos\/.*\.(mp4|webm|poster\.jpg)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'videos-cache',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
+            },
+          },
         ],
       },
       manifest: {

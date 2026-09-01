@@ -7,9 +7,10 @@ import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
+import { MolinoCasa } from './routes/Estudiante/MolinoCasa'
 import { SyncIndicator } from './components/SyncIndicator'
 
-type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami'
+type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino'
 
 export default function App() {
   const [view, setView] = useState<View>('selector')
@@ -157,7 +158,17 @@ export default function App() {
       </div>
     )
 
-  if (view === 'estudiante') return <EstudianteHome onSelect={(id) => (id === 'origami' ? setView('origami') : null)} onBack={() => setView('selector')} />
+  if (view === 'estudiante')
+    return (
+      <EstudianteHome
+        onSelect={(id) => {
+          if (id === 'origami') setView('origami')
+          else if (id === 'molino') setView('molino')
+        }}
+        onBack={() => setView('selector')}
+      />
+    )
   if (view === 'origami') return <OrigamiDetalle onBack={() => setView('estudiante')} />
+  if (view === 'molino') return <MolinoCasa onBack={() => setView('estudiante')} />
   return null
 }
