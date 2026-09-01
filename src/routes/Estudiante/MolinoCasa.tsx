@@ -43,8 +43,10 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     const v = videoRef.current
     if (!v) return
-    v.pause()
     v.currentTime = cp.start
+    const playPromise = v.play()
+    if (playPromise) playPromise.catch(() => {})
+    setIsPlaying(true)
   }, [idx])
 
   useEffect(() => {
@@ -66,25 +68,19 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
   const goNext = () => {
     if (idx < total - 1) setIdx(idx + 1)
   }
-  const doRepeat = () => {
+  const handlePlay = () => {
     const v = videoRef.current
     if (!v) return
-    v.currentTime = cp.start
+    if (v.currentTime < cp.start || v.currentTime >= cp.end) v.currentTime = cp.start
     v.play()
     setIsPlaying(true)
   }
 
-  const handlePlayPause = () => {
+  const handlePause = () => {
     const v = videoRef.current
     if (!v) return
-    if (v.paused) {
-      if (v.currentTime < cp.start || v.currentTime >= cp.end) v.currentTime = cp.start
-      v.play()
-      setIsPlaying(true)
-    } else {
-      v.pause()
-      setIsPlaying(false)
-    }
+    v.pause()
+    setIsPlaying(false)
   }
 
   return (
@@ -128,12 +124,21 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
             >
               ← Anterior
             </button>
-            <button
-              onClick={doRepeat}
-              className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-paper focus-visible:ring-2 focus-visible:ring-terracota"
-            >
-              Repetir
-            </button>
+            {isPlaying ? (
+              <button
+                onClick={handlePause}
+                className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-paper focus-visible:ring-2 focus-visible:ring-terracota"
+              >
+                Pausar
+              </button>
+            ) : (
+              <button
+                onClick={handlePlay}
+                className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-paper focus-visible:ring-2 focus-visible:ring-terracota"
+              >
+                Reproducir
+              </button>
+            )}
             {idx === total - 1 ? (
               completado ? (
                 <span className="px-6 py-2.5 rounded-full bg-mist text-paramo border border-moss/20 font-bold text-[13px]">✓ Completado</span>
@@ -158,14 +163,6 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
               </button>
             )}
           </div>
-
-          <button
-            onClick={handlePlayPause}
-            className="mx-auto mt-3 flex items-center gap-2 text-[12px] font-semibold text-ink/60 hover:text-ink"
-          >
-            <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-moss animate-pulse' : 'bg-ink/20'}`} />
-            {isPlaying ? 'Reproduciendo...' : 'Pausado — espera tu acción'}
-          </button>
         </div>
       </div>
 
