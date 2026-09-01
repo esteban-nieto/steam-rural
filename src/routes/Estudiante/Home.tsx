@@ -17,8 +17,8 @@ export function EstudianteHome({ onSelect, onBack }: { onSelect: (id: string) =>
           title="Creación de molino + casa"
           description="Construye un molino que enciende la luz de una casa — video por pasos"
           badge="STEAM"
-          meta="Video · 1 paso"
-          image={`${import.meta.env.BASE_URL}videos/molino-casa-poster.jpg`}
+          meta="Video · 20 pasos"
+          image={`${import.meta.env.BASE_URL}videos/Portada.png`}
           onClick={() => onSelect('molino')}
         />
       </div>
