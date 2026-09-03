@@ -57,6 +57,7 @@ export function ProfesorHome() {
   const [historialEval, setHistorialEval] = useState<any[]>([])
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const criteriosInicialRef = React.useRef(true)
 
   const cargar = async () => {
     try {
@@ -120,6 +121,31 @@ export function ProfesorHome() {
 
   const EMOJI_MAP: Record<string, string> = { feliz: '😄', contento: '🙂', neutro: '😐', triste: '😔', enfado: '😠' }
 
+  useEffect(() => {
+    if (criteriosInicialRef.current) {
+      criteriosInicialRef.current = false
+      return
+    }
+    if (!seleccionado || actividad !== 'molino-casa' || Object.keys(criterios).length === 0) return
+    const fechaDia = new Date().toISOString().split('T')[0]
+    const ev: any = {
+      id: `${seleccionado.id}-${fechaDia}-molino`,
+      estudiante_id: seleccionado.id,
+      actividad_id: 'molino-casa',
+      fecha: fechaDia,
+      criterios,
+      observacion: null,
+      created_at: new Date().toISOString(),
+    }
+    db.evaluaciones.put(ev).catch(() => {})
+    db.evaluacionesPendientes.put(ev).catch(() => {})
+    if (navigator.onLine) {
+      ;(supabase.from as any)('evaluaciones').upsert(ev).then(({ error }: any) => {
+        if (!error) db.evaluacionesPendientes.delete(ev.id).catch(() => {})
+      }).catch(() => {})
+    }
+  }, [criterios])
+
   const totalPasos = ACTIVIDADES.find((a) => a.id === actividad)?.pasos || 11
 
   const cargarHistorial = async (estudianteId: string) => {
@@ -147,6 +173,7 @@ export function ProfesorHome() {
   }
 
   const abrirEstudiante = async (e: Estudiante) => {
+    criteriosInicialRef.current = true
     setSeleccionado(e); setEmocionInicio(undefined); setEmocionFin(undefined); setPasoHasta(0); setCriterios({}); setMensaje(''); setHistorial([]); setHistorialEval([]); setActividad('origami-conejo')
     pushState('ficha')
     try {
@@ -173,6 +200,7 @@ export function ProfesorHome() {
         if (localE.length > 0) setCriterios((localE[localE.length - 1] as any).criterios || {})
       }
     } catch {}
+    setTimeout(() => { criteriosInicialRef.current = false }, 300)
     cargarHistorial(e.id)
   }
 
@@ -214,6 +242,7 @@ export function ProfesorHome() {
   }
 
   const abrirHistorial = async (h: any) => {
+    criteriosInicialRef.current = true
     setActividad(h.actividad_id || 'origami-conejo')
     setPasoHasta(h.pasos_completados?.length || 0)
     setEmocionInicio(h.emocion_inicio || undefined)
@@ -226,9 +255,11 @@ export function ProfesorHome() {
           const localE = await db.evaluaciones.where('estudiante_id').equals(h.estudiante_id).toArray()
           const found = localE.find((e: any) => e.fecha === h.fecha.split('T')[0])
           if (found) setCriterios((found as any).criterios || {})
+          else setCriterios({})
         }
-      } catch {}
-    }
+      } catch { setCriterios({}) }
+    } else setCriterios({})
+    setTimeout(() => { criteriosInicialRef.current = false }, 300)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -372,11 +403,11 @@ export function ProfesorHome() {
 
       {rubricaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => { setRubricaOpen(false); try{history.back()}catch{} }} />
+          <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => setRubricaOpen(false)} />
           <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-[min(860px,95vw)] max-h-[85vh] overflow-auto paper-texture flex flex-col">
             <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
               <div><p className="font-display font-bold text-ink">Rúbrica STEAM — Molino (1 a 4)</p><p className="text-[11px] text-ink/50">1 En inicio · 2 En desarrollo · 3 Competente · 4 Destacado</p></div>
-              <button onClick={() => { setRubricaOpen(false); try{history.back()}catch{} }} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist" aria-label="Volver">← Volver</button>
+              <button onClick={() => setRubricaOpen(false)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist" aria-label="Volver">← Volver</button>
             </div>
             <div className="p-4 overflow-auto">
               <div className="overflow-x-auto">
