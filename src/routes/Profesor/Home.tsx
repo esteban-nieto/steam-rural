@@ -57,6 +57,8 @@ export function ProfesorHome() {
   const [historialEval, setHistorialEval] = useState<any[]>([])
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [diaDetalle, setDiaDetalle] = useState<{ fecha: string; items: any[] } | null>(null)
+  const [diaRubrica, setDiaRubrica] = useState<any | null>(null)
   const criteriosInicialRef = React.useRef(true)
 
   const cargar = async () => {
@@ -360,42 +362,128 @@ export function ProfesorHome() {
                   <h4 className="font-display font-bold text-ink mb-3">Historial por día</h4>
                   <div className="space-y-3 max-h-64 overflow-auto pr-1">
                     {(() => {
-                      const mapa = new Map<string, any>()
-                      const todos = [...historial, ...historialEval]
-                      todos.forEach((h: any) => {
-                        const d = new Date(h.fecha || h.created_at)
-                        const key = `${d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}|${h.actividad_id || 'progreso'}`
-                        if (!mapa.has(key) || new Date(h.fecha || h.created_at) > new Date(mapa.get(key).fecha || mapa.get(key).created_at)) mapa.set(key, h)
-                      })
                       const porDia = new Map<string, any[]>()
-                      Array.from(mapa.values()).forEach((h: any) => {
-                        const k = new Date(h.fecha || h.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
-                        if (!porDia.has(k)) porDia.set(k, [])
-                        porDia.get(k)!.push(h)
+                      ;[...historial, ...historialEval].forEach((h: any) => {
+                        const d = new Date(h.fecha || h.created_at)
+                        const key = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
+                        if (!porDia.has(key)) porDia.set(key, [])
+                        porDia.get(key)!.push(h)
                       })
-                      return Array.from(porDia.entries()).map(([fecha, items]: any) => (
-                        <div key={fecha} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
-                          <p className="text-[12px] font-bold tracking-wide text-ink capitalize">{fecha}</p>
-                          {items.map((it: any) => {
-                            const esEval = !!it.criterios
-                            const hechos = it.pasos_completados?.length || 0
-                            const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
-                            const estado = esEval ? `${Object.keys(it.criterios || {}).length}/15 criterios` : hechos === totalIt ? `Terminó ${it.actividad_id}` : hechos === 0 ? 'Sin avance' : `Quedó en paso ${hechos}/${totalIt}`
-                            return (
-                              <button key={it.id} onClick={() => abrirHistorial(it)} className="w-full text-left flex items-center gap-2 text-[13px] py-2 border-b last:border-0 border-[#E8E0D0]/50 hover:bg-paper/50 rounded-lg px-1">
-                                <span className="text-[11px] font-bold tracking-widest uppercase px-2 py-1 rounded-full bg-ink text-white">{it.actividad_id === 'molino-casa' ? 'Molino' : 'Origami'}</span>
-                                {!esEval && <><span className="text-lg leading-none">{EMOJI_MAP[it.emocion_inicio] || '—'}</span><span className="text-ink/30">→</span><span className="text-lg leading-none">{EMOJI_MAP[it.emocion_fin] || '—'}</span></>}
-                                {esEval && <span className="text-[11px] bg-terracota text-white px-2 py-1 rounded-full">Rúbrica</span>}
-                                <span className="ml-auto text-[11px] font-medium text-ink/60 bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">{estado}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ))
+                      return Array.from(porDia.entries())
+                        .sort((a,b) => new Date(b[1][0].fecha || b[1][0].created_at).getTime() - new Date(a[0].fecha || a[0].created_at).getTime())
+                        .map(([fecha, items]: any) => {
+                        const diaStr = fecha
+                        const progresosDia = items.filter((x:any)=> !x.criterios)
+                        const evalDia = items.find((x:any)=> x.criterios)
+                        return (
+                          <button key={fecha} onClick={() => setDiaDetalle({ fecha: diaStr, items })} className="w-full text-left bg-white rounded-xl border border-[#E8E0D0] p-3 hover:shadow-paper transition text-left">
+                            <p className="text-[12px] font-bold tracking-wide text-ink capitalize">{fecha}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {progresosDia.map((it:any) => {
+                                const hechos = it.pasos_completados?.length || 0
+                                const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
+                                return (
+                                  <span key={it.id} className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-paper border border-[#E8E0D0] px-2.5 py-1 rounded-full">
+                                    <span className="font-bold tracking-widest uppercase bg-ink text-white px-1.5 py-0.5 rounded-full text-[10px]">{it.actividad_id === 'molino-casa' ? 'Molino' : 'Origami'}</span>
+                                    <span>{EMOJI_MAP[it.emocion_inicio] || '—'}</span>→<span>{EMOJI_MAP[it.emocion_fin] || '—'}</span>
+                                    <span className="text-ink/60">{hechos}/{totalIt}</span>
+                                  </span>
+                                )
+                              })}
+                              {evalDia && <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-terracota text-white px-2.5 py-1 rounded-full">Rúbrica {Object.keys(evalDia.criterios||{}).length}/15</span>}
+                            </div>
+                            <p className="text-[11px] text-terracota font-semibold mt-2">Ver detalle →</p>
+                          </button>
+                        )
+                      })
                     })()}
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {diaDetalle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => setDiaDetalle(null)} />
+          <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-[min(560px,95vw)] max-h-[85vh] overflow-auto paper-texture flex flex-col">
+            <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
+              <div><p className="font-display font-bold text-ink capitalize">{diaDetalle.fecha}</p><p className="text-[11px] text-ink/50">{diaDetalle.items.length} registro(s) del día</p></div>
+              <button onClick={() => setDiaDetalle(null)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist" aria-label="Volver">← Volver</button>
+            </div>
+            <div className="p-4 space-y-3 overflow-auto">
+              {diaDetalle.items.map((it: any) => {
+                const esEval = !!it.criterios
+                if (esEval) return null
+                const hechos = it.pasos_completados?.length || 0
+                const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
+                const label = it.actividad_id === 'molino-casa' ? 'Molino + Casa' : 'Origami Conejo'
+                return (
+                  <div key={it.id} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
+                    <p className="text-[11px] font-bold tracking-widest uppercase text-white bg-ink px-2 py-1 rounded-full inline-block">{label}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[11px] font-bold tracking-widest uppercase text-ink/50">Inicio</span><span className="text-xl">{EMOJI_MAP[it.emocion_inicio] || '—'}</span>
+                      <span className="text-ink/20">→</span>
+                      <span className="text-[11px] font-bold tracking-widest uppercase text-ink/50">Fin</span><span className="text-xl">{EMOJI_MAP[it.emocion_fin] || '—'}</span>
+                      <span className="ml-auto text-[11px] font-bold bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">{hechos}/{totalIt} pasos</span>
+                    </div>
+                    <p className="text-[11px] text-ink/50 mt-2">{hechos === totalIt ? 'Completado' : hechos === 0 ? 'Sin avance' : `Avance ${hechos}/${totalIt}`}</p>
+                  </div>
+                )
+              })}
+              {diaDetalle.items.some((x:any)=> x.criterios) && (
+                <button
+                  onClick={() => {
+                    const ev = diaDetalle.items.find((x:any)=> x.criterios)
+                    if (ev) { setDiaRubrica(ev); setCriterios(ev.criterios || {}) }
+                  }}
+                  className="w-full bg-terracota text-white rounded-full py-3 font-bold hover:bg-[#a65e2a] flex items-center justify-center gap-2"
+                >
+                  📋 Rúbrica STEAM
+                </button>
+              )}
+              {diaDetalle.items.every((x:any)=> !x.criterios) && diaDetalle.items.some((x:any)=> x.actividad_id==='molino-casa') && (
+                <p className="text-center text-[11px] text-ink/40">Este día no tiene rúbrica guardada para Molino.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {diaRubrica && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/60 backdrop-blur-sm" onClick={() => setDiaRubrica(null)} />
+          <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-[min(860px,95vw)] max-h-[85vh] overflow-auto paper-texture flex flex-col">
+            <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
+              <div><p className="font-display font-bold text-ink">Rúbrica del día — {new Date(diaRubrica.fecha || diaRubrica.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric'})}</p><p className="text-[11px] text-ink/50">Solo lectura — {Object.keys(diaRubrica.criterios||{}).length}/15 ítems</p></div>
+              <button onClick={() => setDiaRubrica(null)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist">← Volver</button>
+            </div>
+            <div className="p-4 overflow-auto">
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px] border-collapse">
+                  <thead><tr className="bg-ink text-white"><th className="p-2 text-left">Área / Dimensión</th><th className="p-2 text-left">Indicador</th><th className="p-2 text-center w-12">1</th><th className="p-2 text-center w-12">2</th><th className="p-2 text-center w-12">3</th><th className="p-2 text-center w-12">4</th></tr></thead>
+                  <tbody>
+                    {RUBRICA.map((area) => (
+                      <React.Fragment key={area.area}>
+                        <tr className="bg-mist/50"><td colSpan={6} className="p-2 font-bold text-ink text-[12px]">{area.area}</td></tr>
+                        {area.items.map((it) => (
+                          <tr key={it.key} className="border-b border-[#E8E0D0]/50">
+                            <td className="p-2 font-semibold text-ink whitespace-nowrap text-[11px]">{it.dim}</td>
+                            <td className="p-2 text-ink/80 leading-relaxed text-[11px]">{it.ind}</td>
+                            {[1,2,3,4].map((n) => (
+                              <td key={n} className="p-2 text-center">
+                                <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-[11px] font-bold ${diaRubrica.criterios?.[it.key]===n ? 'bg-paramo text-white' : 'bg-paper border border-[#E8E0D0] text-ink/30'}`}>{diaRubrica.criterios?.[it.key]===n ? '●' : '○'}</span>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
