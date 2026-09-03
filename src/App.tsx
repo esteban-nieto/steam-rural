@@ -113,7 +113,7 @@ export default function App() {
                   <span className="text-[11px] font-bold tracking-widest uppercase text-clay">Historia Pueblo Soleado</span>
                   <span className="text-[12px] font-semibold text-ink/50">Parte 1</span>
                 </div>
-                <p className="text-[12px] leading-relaxed text-ink/60 mt-2">Una historia creada con IA para incentivar la actividad del molino. Toca para ver la primera parte.</p>
+                <p className="text-[12px] leading-relaxed text-ink/60 mt-2">Toca para ver la primera parte.</p>
               </div>
               <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full rounded-[28px] bg-clay/10 border border-clay/10 group-hover:bg-clay/20 transition" />
             </button>

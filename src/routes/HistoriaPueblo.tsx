@@ -44,6 +44,13 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
     v.play()
   }
 
+  const handleFullscreen = () => {
+    const v = videoRef.current as any
+    if (!v) return
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    else (v.requestFullscreen ? v.requestFullscreen() : v.webkitEnterFullscreen?.())?.catch?.(() => {})
+  }
+
   return (
     <Layout title="Historia Pueblo Soleado" onBack={onBack}>
       <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper overflow-hidden paper-texture">
@@ -81,7 +88,7 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
-          <div className="flex gap-2 justify-center mt-5">
+          <div className="flex gap-2 justify-center mt-5 flex-wrap">
             <button
               onClick={handlePlay}
               disabled={!canPlay}
@@ -97,6 +104,14 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
                 Pausar
               </button>
             )}
+            <button
+              onClick={handleFullscreen}
+              disabled={!canPlay}
+              className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-paper disabled:opacity-40 flex items-center gap-1.5"
+              aria-label="Pantalla completa"
+            >
+              ⛶ Pantalla completa
+            </button>
           </div>
 
           {!canPlay && <p className="text-center text-[11px] text-ink/40 mt-2">El video se está descargando para reproducirse sin cortes offline.</p>}
