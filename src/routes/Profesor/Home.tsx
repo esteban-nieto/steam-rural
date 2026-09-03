@@ -444,12 +444,11 @@ export function ProfesorHome() {
               <button onClick={() => setDiaDetalle(null)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist" aria-label="Volver">← Volver</button>
             </div>
             <div className="p-4 space-y-3 overflow-auto">
-              {diaDetalle.items.map((it: any) => {
-                const esEval = !!it.criterios
-                if (esEval) return null
+              {diaDetalle.items.filter((x:any)=> !x.criterios).map((it: any) => {
                 const hechos = it.pasos_completados?.length || 0
                 const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
                 const label = it.actividad_id === 'molino-casa' ? 'Molino + Casa' : 'Origami Conejo'
+                const isMolino = it.actividad_id === 'molino-casa'
                 return (
                   <div key={it.id} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
                     <p className="text-[11px] font-bold tracking-widest uppercase text-white bg-ink px-2 py-1 rounded-full inline-block">{label}</p>
@@ -460,34 +459,45 @@ export function ProfesorHome() {
                       <span className="ml-auto text-[11px] font-bold bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">{hechos}/{totalIt} pasos</span>
                     </div>
                     <p className="text-[11px] text-ink/50 mt-2">{hechos === totalIt ? 'Completado' : hechos === 0 ? 'Sin avance' : `Avance ${hechos}/${totalIt}`}</p>
+                    {isMolino && (
+                      <button
+                        onClick={async () => {
+                          const fechaKey = (it.fecha || it.created_at || new Date().toISOString()).split('T')[0]
+                          let ev: any = diaDetalle.items.find((x:any)=> x.criterios && (x.fecha || x.created_at || '').startsWith(fechaKey))
+                          if (!ev) {
+                            try {
+                              const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', it.estudiante_id).eq('fecha', fechaKey).limit(1).single()
+                              if (data?.criterios) ev = data
+                            } catch {}
+                          }
+                          if (!ev || !ev.criterios) {
+                            try {
+                              const localAll = await db.evaluaciones.where('estudiante_id').equals(it.estudiante_id).toArray()
+                              const found = localAll.find((e:any)=> e.fecha === fechaKey)
+                              if (found?.criterios) ev = found
+                            } catch {}
+                          }
+                          if (ev && ev.criterios) {
+                            setDiaRubrica(ev)
+                            setCriterios(ev.criterios || {})
+                            try {
+                              const obs = (ev as any).observaciones || (ev as any).observacion
+                              setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
+                            } catch { setObservaciones({}) }
+                          } else {
+                            setDiaRubrica({ ...it, criterios: {}, fecha: fechaKey, id: `${it.estudiante_id}-${fechaKey}-molino`, actividad_id: 'molino-casa' })
+                            setCriterios({})
+                            setObservaciones({})
+                          }
+                        }}
+                        className="w-full mt-3 bg-white border border-terracota text-terracota rounded-full py-2 text-[12px] font-bold hover:bg-terracota hover:text-white transition flex items-center justify-center gap-1.5"
+                      >
+                        📋 Ver rúbrica
+                      </button>
+                    )}
                   </div>
                 )
               })}
-              {diaDetalle.items.some((x:any)=> x.actividad_id==='molino-casa' || x.criterios) && (
-                <button
-                  onClick={() => {
-                    const ev = diaDetalle.items.find((x:any)=> x.criterios) || diaDetalle.items.find((x:any)=> x.actividad_id==='molino-casa')
-                    const fechaKey = new Date(ev?.fecha || ev?.created_at || Date.now()).toISOString().split('T')[0]
-                    const existing = (ev && ev.criterios) ? ev : null
-                    if (existing) {
-                      setDiaRubrica(existing)
-                      setCriterios(existing.criterios || {})
-                      try {
-                        const obs = (existing as any).observaciones || (existing as any).observacion
-                        setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
-                      } catch { setObservaciones({}) }
-                    } else {
-                      const baseEv: any = diaDetalle.items.find((x:any)=> x.actividad_id==='molino-casa') || { estudiante_id: seleccionado?.id, actividad_id: 'molino-casa', fecha: fechaKey }
-                      setDiaRubrica({ ...baseEv, criterios: {}, fecha: fechaKey, id: `${baseEv.estudiante_id}-${fechaKey}-molino` })
-                      setCriterios({})
-                      setObservaciones({})
-                    }
-                  }}
-                  className="w-full bg-terracota text-white rounded-full py-3 font-bold hover:bg-[#a65e2a] flex items-center justify-center gap-2"
-                >
-                  📋 {diaDetalle.items.some((x:any)=> x.criterios) ? 'Ver Rúbrica STEAM' : 'Crear Rúbrica STEAM'}
-                </button>
-              )}
             </div>
           </div>
         </div>
