@@ -137,14 +137,14 @@ export function ProfesorHome() {
       actividad_id: 'molino-casa',
       fecha: fechaDia,
       criterios,
-      observaciones,
       observacion: JSON.stringify(observaciones),
       created_at: new Date().toISOString(),
     }
-    db.evaluaciones.put(ev).catch(() => {})
-    db.evaluacionesPendientes.put(ev).catch(() => {})
+    const evLocal: any = { ...ev, observaciones }
+    db.evaluaciones.put(evLocal).catch(() => {})
+    db.evaluacionesPendientes.put(evLocal).catch(() => {})
     if (navigator.onLine) {
-      ;(supabase.from as any)('evaluaciones').upsert(ev).then(({ error }: any) => {
+      ;(supabase.from as any)('evaluaciones').upsert({ id: ev.id, estudiante_id: ev.estudiante_id, actividad_id: ev.actividad_id, fecha: ev.fecha, criterios: ev.criterios, observacion: ev.observacion }).then(({ error }: any) => {
         if (!error) db.evaluacionesPendientes.delete(ev.id).catch(() => {})
       }).catch(() => {})
     }
@@ -234,10 +234,11 @@ export function ProfesorHome() {
         if (error) throw error
       }
       if (actividad === 'molino-casa' && (Object.keys(criterios).length > 0 || Object.keys(observaciones).length > 0)) {
-        const ev: any = { id: `${seleccionado.id}-${fechaDia}-molino`, estudiante_id: seleccionado.id, actividad_id: actividad, fecha: fechaDia, criterios, observaciones, observacion: JSON.stringify(observaciones), created_at: new Date().toISOString() }
-        await guardarEvaluacionLocal(ev)
+        const evForSupabase: any = { id: `${seleccionado.id}-${fechaDia}-molino`, estudiante_id: seleccionado.id, actividad_id: actividad, fecha: fechaDia, criterios, observacion: JSON.stringify(observaciones), created_at: new Date().toISOString() }
+        const evLocal: any = { ...evForSupabase, observaciones }
+        await guardarEvaluacionLocal(evLocal)
         if (navigator.onLine) {
-          const { error } = await (supabase.from as any)('evaluaciones').upsert(ev)
+          const { error } = await (supabase.from as any)('evaluaciones').upsert(evForSupabase)
           if (error) throw error
           else await db.evaluacionesPendientes.delete(ev.id).catch(() => {})
         }
@@ -462,19 +463,30 @@ export function ProfesorHome() {
                   </div>
                 )
               })}
-              {diaDetalle.items.some((x:any)=> x.criterios) && (
+              {diaDetalle.items.some((x:any)=> x.actividad_id==='molino-casa' || x.criterios) && (
                 <button
                   onClick={() => {
-                    const ev = diaDetalle.items.find((x:any)=> x.criterios)
-                    if (ev) { setDiaRubrica(ev); setCriterios(ev.criterios || {}) }
+                    const ev = diaDetalle.items.find((x:any)=> x.criterios) || diaDetalle.items.find((x:any)=> x.actividad_id==='molino-casa')
+                    const fechaKey = new Date(ev?.fecha || ev?.created_at || Date.now()).toISOString().split('T')[0]
+                    const existing = (ev && ev.criterios) ? ev : null
+                    if (existing) {
+                      setDiaRubrica(existing)
+                      setCriterios(existing.criterios || {})
+                      try {
+                        const obs = (existing as any).observaciones || (existing as any).observacion
+                        setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
+                      } catch { setObservaciones({}) }
+                    } else {
+                      const baseEv: any = diaDetalle.items.find((x:any)=> x.actividad_id==='molino-casa') || { estudiante_id: seleccionado?.id, actividad_id: 'molino-casa', fecha: fechaKey }
+                      setDiaRubrica({ ...baseEv, criterios: {}, fecha: fechaKey, id: `${baseEv.estudiante_id}-${fechaKey}-molino` })
+                      setCriterios({})
+                      setObservaciones({})
+                    }
                   }}
                   className="w-full bg-terracota text-white rounded-full py-3 font-bold hover:bg-[#a65e2a] flex items-center justify-center gap-2"
                 >
-                  📋 Rúbrica STEAM
+                  📋 {diaDetalle.items.some((x:any)=> x.criterios) ? 'Ver Rúbrica STEAM' : 'Crear Rúbrica STEAM'}
                 </button>
-              )}
-              {diaDetalle.items.every((x:any)=> !x.criterios) && diaDetalle.items.some((x:any)=> x.actividad_id==='molino-casa') && (
-                <p className="text-center text-[11px] text-ink/40">Este día no tiene rúbrica guardada para Molino.</p>
               )}
             </div>
           </div>
