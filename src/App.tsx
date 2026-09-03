@@ -8,14 +8,15 @@ import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
 import { MolinoCasa } from './routes/Estudiante/MolinoCasa'
+import { HistoriaPueblo } from './routes/HistoriaPueblo'
 import { SyncIndicator } from './components/SyncIndicator'
 
-type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino'
+type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino' | 'historia'
 
 export default function App() {
   const [view, setView] = useState<View>(() => {
     const h = location.hash.replace('#', '') as View
-    return (['selector','login','registro','profesor','estudiante','origami','molino'].includes(h) ? h : 'selector') as View
+    return (['selector','login','registro','profesor','estudiante','origami','molino','historia'].includes(h) ? h : 'selector') as View
   })
   const [session, setSession] = useState<boolean>(false)
 
@@ -28,7 +29,7 @@ export default function App() {
     initSyncListener()
     const onPop = (e: PopStateEvent) => {
       const v = (e.state?.view || location.hash.replace('#','') || 'selector') as View
-      if (['selector','login','registro','profesor','estudiante','origami','molino'].includes(v)) setView(v)
+      if (['selector','login','registro','profesor','estudiante','origami','molino','historia'].includes(v)) setView(v)
       else setView('selector')
     }
     window.addEventListener('popstate', onPop)
@@ -98,19 +99,24 @@ export default function App() {
               <p className="text-[15px] leading-relaxed text-ink/60 mt-4 max-w-[46ch]">Talleres de robótica creativa y STEAM para escuelas rurales.</p>
             </div>
 
-            <div className="relative">
-              <div className="bg-white rounded-[28px] border border-[#E8E0D0] shadow-paper p-6 sm:p-8 paper-texture">
+            <button onClick={() => pushView('historia')} className="relative text-left w-full group">
+              <div className="bg-white rounded-[28px] border border-[#E8E0D0] shadow-paper p-6 sm:p-8 paper-texture group-hover:shadow-lift group-hover:-translate-y-1 transition-all">
                 <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-mist to-paper border border-[#E8E0D0] flex items-center justify-center relative overflow-hidden">
-                  <img src={`${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`} alt="Origami Conejo terminado en papel reciclado" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Origami Conejo · 11 pasos</div>
+                  <img src={`${import.meta.env.BASE_URL}historia/pueblo-soleado-poster.jpg`} alt="Historia Pueblo Soleado" className="absolute inset-0 w-full h-full object-cover" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center text-xl shadow-lg group-hover:scale-110 transition">▶</span>
+                  </div>
+                  <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-[#E8E0D0] text-[11px] font-bold tracking-widest uppercase text-ink">Ver historia</div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
-                  <span className="text-[11px] font-bold tracking-widest uppercase text-moss">Figura destacada</span>
-                  <span className="text-[12px] font-semibold text-ink/50">Papel reciclado · 11 pasos</span>
+                  <span className="text-[11px] font-bold tracking-widest uppercase text-clay">Historia Pueblo Soleado</span>
+                  <span className="text-[12px] font-semibold text-ink/50">Parte 1</span>
                 </div>
+                <p className="text-[12px] leading-relaxed text-ink/60 mt-2">Una historia creada con IA para incentivar la actividad del molino. Toca para ver la primera parte.</p>
               </div>
-              <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full rounded-[28px] bg-clay/10 border border-clay/10" />
-            </div>
+              <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full rounded-[28px] bg-clay/10 border border-clay/10 group-hover:bg-clay/20 transition" />
+            </button>
           </section>
 
           <section className="pb-10 grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
@@ -188,5 +194,6 @@ export default function App() {
     )
   if (view === 'origami') return <OrigamiDetalle onBack={() => pushView('estudiante')} />
   if (view === 'molino') return <MolinoCasa onBack={() => pushView('estudiante')} />
+  if (view === 'historia') return <HistoriaPueblo onBack={() => pushView('selector')} />
   return null
 }

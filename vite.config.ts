@@ -33,6 +33,16 @@ export default defineConfig({
               rangeRequests: true,
             },
           },
+          {
+            urlPattern: /\/historia\/.*\.(mp4|webm|jpg|jpeg|png)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'historia-cache',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
+            },
+          },
         ],
       },
       manifest: {
