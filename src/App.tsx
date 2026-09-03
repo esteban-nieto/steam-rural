@@ -13,11 +13,29 @@ import { SyncIndicator } from './components/SyncIndicator'
 type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino'
 
 export default function App() {
-  const [view, setView] = useState<View>('selector')
+  const [view, setView] = useState<View>(() => {
+    const h = location.hash.replace('#', '') as View
+    return (['selector','login','registro','profesor','estudiante','origami','molino'].includes(h) ? h : 'selector') as View
+  })
   const [session, setSession] = useState<boolean>(false)
+
+  const pushView = (v: View) => {
+    try { history.pushState({ view: v }, '', `#${v}`) } catch {}
+    setView(v)
+  }
 
   useEffect(() => {
     initSyncListener()
+    const onPop = (e: PopStateEvent) => {
+      const v = (e.state?.view || location.hash.replace('#','') || 'selector') as View
+      if (['selector','login','registro','profesor','estudiante','origami','molino'].includes(v)) setView(v)
+      else setView('selector')
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  useEffect(() => {
     const initSession = async () => {
       if (!navigator.onLine) {
         try {
@@ -59,7 +77,7 @@ export default function App() {
               <SyncIndicator />
               {!session && (
                 <button
-                  onClick={() => setView('registro')}
+                  onClick={() => pushView('registro')}
                   aria-label="Crear cuenta de profesor"
                   className="text-[13px] font-semibold text-paramo border border-paramo/20 px-4 py-2 rounded-full hover:bg-white transition focus-visible:ring-2 focus-visible:ring-terracota"
                 >
@@ -97,7 +115,7 @@ export default function App() {
 
           <section className="pb-10 grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto">
             <button
-              onClick={() => setView('estudiante')}
+              onClick={() => pushView('estudiante')}
               className="group text-left bg-white rounded-paper border border-[#E8E0D0] shadow-paper hover:shadow-lift hover:-translate-y-1 transition-all p-6 fold-corner"
             >
               <div className="w-12 h-12 rounded-2xl bg-mist border border-moss/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-105 transition">🎨</div>
@@ -107,7 +125,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setView(session ? 'profesor' : 'login')}
+              onClick={() => pushView(session ? 'profesor' : 'login')}
               aria-label={session ? 'Abrir panel del profesor' : 'Iniciar sesión como profesor'}
               className="group text-left bg-slateProfesor text-white rounded-paper shadow-paper hover:shadow-lift hover:-translate-y-1 transition-all p-6 relative overflow-hidden focus-visible:ring-2 focus-visible:ring-terracota focus-visible:ring-offset-2"
             >
@@ -129,10 +147,10 @@ export default function App() {
   if (view === 'login')
     return (
       <div className="min-h-screen bg-paper paper-texture p-6 flex flex-col items-center">
-        <button onClick={() => setView('selector')} className="self-start max-w-sm w-full mx-auto text-sm text-ink/60 mb-4">← Volver</button>
-        <Login onSuccess={() => setView('profesor')} />
+        <button onClick={() => pushView('selector')} className="self-start max-w-sm w-full mx-auto text-sm text-ink/60 mb-4">← Volver</button>
+        <Login onSuccess={() => pushView('profesor')} />
         <p className="text-center text-sm mt-4 text-ink/60">
-          ¿Sin cuenta? <button onClick={() => setView('registro')} className="text-paramo font-semibold underline">Regístrate</button>
+          ¿Sin cuenta? <button onClick={() => pushView('registro')} className="text-paramo font-semibold underline">Regístrate</button>
         </p>
       </div>
     )
@@ -140,8 +158,8 @@ export default function App() {
   if (view === 'registro')
     return (
       <div className="min-h-screen bg-paper paper-texture p-6 flex flex-col items-center">
-        <button onClick={() => setView('selector')} className="self-start max-w-sm w-full mx-auto text-sm text-ink/60 mb-4">← Volver</button>
-        <Registro onSuccess={() => setView('login')} />
+        <button onClick={() => pushView('selector')} className="self-start max-w-sm w-full mx-auto text-sm text-ink/60 mb-4">← Volver</button>
+        <Registro onSuccess={() => pushView('login')} />
       </div>
     )
 
@@ -149,8 +167,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-paper">
         <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-[#E8E0D0] px-4 py-2 flex justify-between max-w-6xl mx-auto">
-          <button onClick={() => setView('selector')} className="text-sm font-medium text-ink/70">← Inicio</button>
-          <button onClick={async () => { await (supabase.auth as any).signOut(); setView('selector') }} className="text-sm font-semibold text-red-600">
+          <button onClick={() => pushView('selector')} className="text-sm font-medium text-ink/70">← Inicio</button>
+          <button onClick={async () => { await (supabase.auth as any).signOut(); pushView('selector') }} className="text-sm font-semibold text-red-600">
             Cerrar sesión
           </button>
         </div>
@@ -162,13 +180,13 @@ export default function App() {
     return (
       <EstudianteHome
         onSelect={(id) => {
-          if (id === 'origami') setView('origami')
-          else if (id === 'molino') setView('molino')
+          if (id === 'origami') pushView('origami')
+          else if (id === 'molino') pushView('molino')
         }}
-        onBack={() => setView('selector')}
+        onBack={() => pushView('selector')}
       />
     )
-  if (view === 'origami') return <OrigamiDetalle onBack={() => setView('estudiante')} />
-  if (view === 'molino') return <MolinoCasa onBack={() => setView('estudiante')} />
+  if (view === 'origami') return <OrigamiDetalle onBack={() => pushView('estudiante')} />
+  if (view === 'molino') return <MolinoCasa onBack={() => pushView('estudiante')} />
   return null
 }

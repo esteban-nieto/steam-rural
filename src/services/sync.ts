@@ -1,4 +1,4 @@
-import { obtenerProgresosPendientes, obtenerEstudiantesPendientes, limpiarProgresosEnviados, limpiarEstudiantesEnviados } from './db'
+import { db, obtenerProgresosPendientes, obtenerEstudiantesPendientes, obtenerEvaluacionesPendientes, limpiarProgresosEnviados, limpiarEstudiantesEnviados, limpiarEvaluacionesEnviadas } from './db'
 import { supabase } from './supabase'
 
 export async function syncPendientes() {
@@ -25,6 +25,17 @@ export async function syncPendientes() {
       }
     }
   } catch {}
+  try {
+    const evalPendientes = await obtenerEvaluacionesPendientes()
+    if (evalPendientes.length > 0) {
+      const { error } = await supabase.from('evaluaciones').upsert(evalPendientes)
+      if (!error) {
+        const ids = evalPendientes.map((e) => e.id)
+        await limpiarEvaluacionesEnviadas(ids)
+      }
+    }
+  } catch {}
+  try { await db.open().catch(() => {}) } catch {}
 }
 
 export function initSyncListener() {
