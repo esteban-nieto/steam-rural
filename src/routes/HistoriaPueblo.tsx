@@ -1,11 +1,40 @@
 import { useRef, useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
 
+const PARTES = [
+  {
+    id: 1,
+    titulo: 'Parte 1',
+    subtitulo: 'El inicio del molino que dio luz al pueblo',
+    video: 'historia/pueblo-soleado-parte1.mp4',
+    poster: 'historia/pueblo-soleado-poster.jpg',
+  },
+  {
+    id: 2,
+    titulo: 'Parte 2',
+    subtitulo: 'El tractor',
+    video: 'historia/pueblo-soleado-parte2.mp4',
+    poster: 'historia/pueblo-soleado-parte2-poster.jpg',
+  },
+]
+
 export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [parte, setParte] = useState(1)
   const [canPlay, setCanPlay] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const actual = PARTES.find((p) => p.id === parte) || PARTES[0]
+
+  useEffect(() => {
+    setCanPlay(false)
+    setLoading(true)
+    setIsPlaying(false)
+    const v = videoRef.current
+    if (!v) return
+    v.load()
+  }, [parte])
 
   useEffect(() => {
     const v = videoRef.current
@@ -36,7 +65,7 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
       v.removeEventListener('pause', onPause)
       v.removeEventListener('progress', onProgress)
     }
-  }, [])
+  }, [parte])
 
   const handlePlay = () => {
     const v = videoRef.current
@@ -53,18 +82,32 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
 
   return (
     <Layout title="Historia Pueblo Soleado" onBack={onBack}>
+      <div className="bg-white rounded-full border border-[#E8E0D0] p-1 flex gap-1 justify-center mb-4 max-w-xs mx-auto">
+        {PARTES.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setParte(p.id)}
+            className={`flex-1 px-4 py-2 rounded-full text-[13px] font-bold transition ${parte === p.id ? 'bg-clay text-white shadow-sm' : 'text-ink/60 hover:bg-paper'}`}
+          >
+            {p.titulo}
+          </button>
+        ))}
+      </div>
+      <p className="text-center text-[11px] font-bold tracking-widest uppercase text-ink/40 mb-3">Toca para cambiar de capítulo</p>
+
       <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper overflow-hidden paper-texture">
         <div className="p-4 border-b border-[#E8E0D0] flex items-center gap-2">
-          <span className="text-[11px] font-bold tracking-[0.14em] uppercase bg-clay text-white px-2.5 py-1 rounded-full">Parte 1</span>
-          <span className="text-[13px] font-medium text-ink/60">El inicio del molino que dio luz al pueblo</span>
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase bg-clay text-white px-2.5 py-1 rounded-full">{actual.titulo}</span>
+          <span className="text-[13px] font-medium text-ink/60">{actual.subtitulo}</span>
         </div>
 
         <div className="p-5">
           <div className="aspect-video bg-black rounded-2xl overflow-hidden relative border border-[#E8E0D0]">
             <video
+              key={actual.id}
               ref={videoRef}
-              src={`${import.meta.env.BASE_URL}historia/pueblo-soleado-parte1.mp4`}
-              poster={`${import.meta.env.BASE_URL}historia/pueblo-soleado-poster.jpg`}
+              src={`${import.meta.env.BASE_URL}${actual.video}`}
+              poster={`${import.meta.env.BASE_URL}${actual.poster}`}
               preload="auto"
               playsInline
               controls={false}
@@ -118,7 +161,7 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-ink/30 mt-4">Historia creada con IA para incentivar la actividad del molino. Más partes próximamente.</p>
+      <p className="text-center text-[11px] text-ink/30 mt-4">Más partes próximamente.</p>
     </Layout>
   )
 }
