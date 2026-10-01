@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react'
 import { supabase } from './services/supabase'
-import { initSyncListener } from './services/sync'
+import { initSyncListener, syncPendientes } from './services/sync'
 import { Login } from './routes/Auth/Login'
 import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
@@ -55,7 +55,12 @@ export default function App() {
     }
     initSession()
     try {
-      const { data: sub } = (supabase.auth as any).onAuthStateChange((_: any, s: any) => setSession(!!s))
+      const { data: sub } = (supabase.auth as any).onAuthStateChange((_: any, s: any) => {
+        setSession(!!s)
+        if (s) {
+          syncPendientes()
+        }
+      })
       return () => sub?.subscription?.unsubscribe()
     } catch {
       return () => {}

@@ -290,14 +290,19 @@ export function ProfesorHome() {
       setHistorial([...localAll].reverse())
     }
     try {
-      const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
-      if (data && data.length > 0) {
-        setHistorialEval(data)
-        for (const ev of data) await db.evaluaciones.put(ev).catch(() => {})
-      } else {
-        const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray().catch(() => [])
-        setHistorialEval([...localE].reverse())
+      const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray().catch(() => [])
+      let combined = [...localE]
+      if (navigator.onLine) {
+        const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
+        if (data && data.length > 0) {
+          const map = new Map<string, any>()
+          localE.forEach((e: any) => map.set(e.id, e))
+          data.forEach((e: any) => map.set(e.id, e))
+          combined = Array.from(map.values())
+          for (const ev of data) await db.evaluaciones.put(ev).catch(() => {})
+        }
       }
+      setHistorialEval(combined.reverse())
     } catch {
       try { const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray(); setHistorialEval([...localE].reverse()) } catch { setHistorialEval([]) }
     }

@@ -7,7 +7,16 @@ export async function syncPendientes() {
   try {
     const estPendientes = await obtenerEstudiantesPendientes()
     if (estPendientes.length > 0) {
-      const { error } = await supabase.from('estudiantes').upsert(estPendientes)
+      let currentProfesorId: string | null = null
+      try {
+        const { data } = await supabase.auth.getUser()
+        currentProfesorId = data?.user?.id || null
+      } catch {}
+      const estSaneados = estPendientes.map((e) => ({
+        ...e,
+        profesor_id: e.profesor_id || currentProfesorId,
+      }))
+      const { error } = await supabase.from('estudiantes').upsert(estSaneados)
       if (!error) {
         const ids = estPendientes.map((e) => e.id)
         await limpiarEstudiantesEnviados(ids)
@@ -44,6 +53,9 @@ export async function syncPendientes() {
       if (!error) {
         const ids = evalPendientes.map((e) => e.id)
         await limpiarEvaluacionesEnviadas(ids)
+        for (const d of datosParaSupabase) {
+          await db.evaluaciones.put(d).catch(() => {})
+        }
       }
     }
   } catch {}
