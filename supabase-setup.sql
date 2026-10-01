@@ -44,9 +44,9 @@ create policy "profesor_gestiona_progresos" on progresos
     exists (select 1 from estudiantes where estudiantes.id = progresos.estudiante_id and estudiantes.profesor_id = auth.uid())
   );
 
--- 3. Evaluaciones (rúbrica molino, solo para molino+casa)
+-- 3. Evaluaciones (rúbrica molino PRE y POST, solo para molino+casa)
 create table if not exists evaluaciones (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   estudiante_id uuid references estudiantes(id) on delete cascade,
   actividad_id text not null,
   fecha date not null default current_date,
@@ -54,6 +54,8 @@ create table if not exists evaluaciones (
   observacion text,
   created_at timestamp with time zone default now()
 );
+-- Si la tabla ya fue creada previamente con id uuid, ejecuta:
+-- alter table evaluaciones alter column id type text;
 create index if not exists idx_evaluaciones_estudiante_fecha on evaluaciones(estudiante_id, fecha);
 alter table evaluaciones enable row level security;
 drop policy if exists "profesor_gestiona_evaluaciones" on evaluaciones;

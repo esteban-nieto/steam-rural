@@ -28,7 +28,15 @@ export async function syncPendientes() {
   try {
     const evalPendientes = await obtenerEvaluacionesPendientes()
     if (evalPendientes.length > 0) {
-      const { error } = await supabase.from('evaluaciones').upsert(evalPendientes)
+      const datosParaSupabase = evalPendientes.map((ev: any) => ({
+        id: ev.id,
+        estudiante_id: ev.estudiante_id,
+        actividad_id: ev.actividad_id,
+        fecha: ev.fecha,
+        criterios: ev.criterios,
+        observacion: typeof ev.observacion === 'string' ? ev.observacion : JSON.stringify(ev.observaciones || {}),
+      }))
+      const { error } = await supabase.from('evaluaciones').upsert(datosParaSupabase)
       if (!error) {
         const ids = evalPendientes.map((e) => e.id)
         await limpiarEvaluacionesEnviadas(ids)

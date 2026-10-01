@@ -60,6 +60,7 @@ export function ProfesorHome() {
   const [mensaje, setMensaje] = useState('')
   const [diaDetalle, setDiaDetalle] = useState<{ fecha: string; items: any[] } | null>(null)
   const [diaRubrica, setDiaRubrica] = useState<any | null>(null)
+  const [tipoRubrica, setTipoRubrica] = useState<'pre' | 'post'>('pre')
   const criteriosInicialRef = React.useRef(true)
 
   const cargar = async () => {
@@ -124,33 +125,146 @@ export function ProfesorHome() {
 
   const EMOJI_MAP: Record<string, string> = { feliz: '😄', contento: '🙂', neutro: '😐', triste: '😔', enfado: '😠' }
 
-  useEffect(() => {
-    if (criteriosInicialRef.current) {
-      criteriosInicialRef.current = false
-      return
-    }
-    if (!seleccionado || actividad !== 'molino-casa' || (Object.keys(criterios).length === 0 && Object.keys(observaciones).length === 0)) return
+  const totalPasos = ACTIVIDADES.find((a) => a.id === actividad)?.pasos || 11
+
+  const guardarRubricaDirecto = async (
+    tipo: 'pre' | 'post',
+    crit: Record<string, number>,
+    obs: Record<string, string>
+  ) => {
+    if (!seleccionado) return
     const fechaDia = new Date().toISOString().split('T')[0]
-    const ev: any = {
-      id: `${seleccionado.id}-${fechaDia}-molino`,
+    const actId = tipo === 'post' ? 'molino-casa-post' : 'molino-casa'
+    const evId = tipo === 'post' ? `${seleccionado.id}-${fechaDia}-molino-post` : `${seleccionado.id}-${fechaDia}-molino`
+    const evForSupabase: any = {
+      id: evId,
       estudiante_id: seleccionado.id,
-      actividad_id: 'molino-casa',
+      actividad_id: actId,
       fecha: fechaDia,
-      criterios,
-      observacion: JSON.stringify(observaciones),
+      criterios: crit,
+      observacion: JSON.stringify(obs),
       created_at: new Date().toISOString(),
     }
-    const evLocal: any = { ...ev, observaciones }
-    db.evaluaciones.put(evLocal).catch(() => {})
-    db.evaluacionesPendientes.put(evLocal).catch(() => {})
-    if (navigator.onLine) {
-      ;(supabase.from as any)('evaluaciones').upsert({ id: ev.id, estudiante_id: ev.estudiante_id, actividad_id: ev.actividad_id, fecha: ev.fecha, criterios: ev.criterios, observacion: ev.observacion }).then(({ error }: any) => {
-        if (!error) db.evaluacionesPendientes.delete(ev.id).catch(() => {})
-      }).catch(() => {})
-    }
-  }, [criterios, observaciones])
+    const evLocal: any = { ...evForSupabase, observaciones: obs }
+    await db.evaluaciones.put(evLocal).catch(() => {})
+    await db.evaluacionesPendientes.put(evLocal).catch(() => {})
 
-  const totalPasos = ACTIVIDADES.find((a) => a.id === actividad)?.pasos || 11
+    if (navigator.onLine) {
+      try {
+        const { error } = await (supabase.from as any)('evaluaciones').upsert({
+          id: evForSupabase.id,
+          estudiante_id: evForSupabase.estudiante_id,
+          actividad_id: evForSupabase.actividad_id,
+          fecha: evForSupabase.fecha,
+          criterios: evForSupabase.criterios,
+          observacion: evForSupabase.observacion,
+        })
+        if (!error) {
+          await db.evaluacionesPendientes.delete(evId).catch(() => {})
+        }
+      } catch {}
+    }
+
+    setHistorialEval((p) => {
+      const filtrado = p.filter((x: any) => x.id !== evId)
+      return [evLocal, ...filtrado]
+    })
+  }
+
+  const actualizarCriterio = (key: string, val: number) => {
+    const nuevos = { ...criterios, [key]: val }
+    setCriterios(nuevos)
+    guardarRubricaDirecto(tipoRubrica, nuevos, observaciones)
+  }
+
+  const actualizarObservacion = (areaKey: string, val: string) => {
+    const nuevas = { ...observaciones, [areaKey]: val }
+    setObservaciones(nuevas)
+    guardarRubricaDirecto(tipoRubrica, criterios, nuevas)
+  }
+
+  const cargarRubricaPorTipo = async (tipo: 'pre' | 'post') => {
+    if (!seleccionado) return
+    const actId = tipo === 'post' ? 'molino-casa-post' : 'molino-casa'
+    let found: any = null
+
+    found = historialEval.find((e: any) => e.actividad_id === actId)
+
+    if (!found) {
+      try {
+        const localAll = await db.evaluaciones.where('estudiante_id').equals(seleccionado.id).toArray()
+        found = localAll.filter((e: any) => e.actividad_id === actId).pop()
+      } catch {}
+    }
+
+    if (!found && navigator.onLine) {
+      try {
+        const { data } = await (supabase.from as any)('evaluaciones')
+          .select('*')
+          .eq('estudiante_id', seleccionado.id)
+          .eq('actividad_id', actId)
+          .order('fecha', { ascending: false })
+          .limit(1)
+          .single()
+        if (data) {
+          found = data
+          await db.evaluaciones.put(data).catch(() => {})
+        }
+      } catch {}
+    }
+
+    if (found) {
+      setCriterios(found.criterios || {})
+      let obs = found.observaciones || found.observacion || {}
+      if (typeof obs === 'string') {
+        try { obs = JSON.parse(obs) } catch { obs = {} }
+      }
+      setObservaciones(obs || {})
+    } else {
+      setCriterios({})
+      setObservaciones({})
+    }
+  }
+
+  const abrirRubrica = async (tipo: 'pre' | 'post') => {
+    setTipoRubrica(tipo)
+    setRubricaOpen(true)
+    pushState('rubrica')
+    await cargarRubricaPorTipo(tipo)
+  }
+
+  const cambiarTipoRubrica = async (nuevoTipo: 'pre' | 'post') => {
+    if (nuevoTipo === tipoRubrica) return
+    setTipoRubrica(nuevoTipo)
+    await cargarRubricaPorTipo(nuevoTipo)
+  }
+
+  const exportarRubricaCSV = (
+    tipoLabel: string,
+    criteriosMap: Record<string, number>,
+    obsMap: Record<string, string> | string,
+    fechaDoc: string
+  ) => {
+    const parsedObs = typeof obsMap === 'string' ? (obsMap ? JSON.parse(obsMap) : {}) : (obsMap || {})
+    let csv = 'Estudiante,Curso,Momento,Fecha,Area,Dimension,Indicador,Puntaje,Observacion\n'
+    const estNombre = seleccionado?.nombre || 'Estudiante'
+    const estCurso = seleccionado?.curso || curso
+    RUBRICA.forEach((area) => {
+      const areaKey = area.area.split('(')[1]?.replace(')', '') || area.area
+      const obsArea = typeof parsedObs === 'string' ? parsedObs : (parsedObs[areaKey] || '')
+      area.items.forEach((it) => {
+        const puntaje = criteriosMap?.[it.key] || ''
+        csv += `"${estNombre.replace(/"/g, '""')}","${estCurso}","${tipoLabel}","${fechaDoc}","${area.area.replace(/"/g, '""')}","${it.dim}","${it.ind.replace(/"/g, '""')}","${puntaje}","${obsArea.replace(/"/g, '""')}"\n`
+      })
+    })
+    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `rubrica_molino_${tipoLabel}_${estNombre.replace(/\s+/g, '_')}_${fechaDoc}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const cargarHistorial = async (estudianteId: string) => {
     try {
@@ -166,8 +280,10 @@ export function ProfesorHome() {
     }
     try {
       const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
-      if (data && data.length > 0) setHistorialEval(data)
-      else {
+      if (data && data.length > 0) {
+        setHistorialEval(data)
+        for (const ev of data) await db.evaluaciones.put(ev).catch(() => {})
+      } else {
         const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray().catch(() => [])
         setHistorialEval([...localE].reverse())
       }
@@ -177,7 +293,6 @@ export function ProfesorHome() {
   }
 
   const abrirEstudiante = async (e: Estudiante) => {
-    criteriosInicialRef.current = true
     setSeleccionado(e); setEmocionInicio(undefined); setEmocionFin(undefined); setPasoHasta(0); setCriterios({}); setObservaciones({}); setMensaje(''); setHistorial([]); setHistorialEval([]); setActividad('origami-conejo')
     pushState('ficha')
     try {
@@ -196,22 +311,7 @@ export function ProfesorHome() {
         }
       }
     } catch {}
-    try {
-      const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', e.id).order('fecha', { ascending: false }).limit(1).single()
-      if (data?.criterios) {
-        setCriterios(data.criterios)
-        try { setObservaciones(data.observaciones ? (typeof data.observaciones === 'string' ? JSON.parse(data.observacion || '{}') : data.observaciones) : data.observacion ? JSON.parse(data.observacion) : {}) } catch { setObservaciones({}) }
-        if (data.observaciones) setObservaciones(typeof data.observaciones === 'string' ? JSON.parse(data.observaciones) : data.observaciones)
-      } else {
-        const localE = await db.evaluaciones.where('estudiante_id').equals(e.id).toArray()
-        if (localE.length > 0) {
-          const last = localE[localE.length - 1] as any
-          setCriterios(last.criterios || {})
-          setObservaciones(last.observaciones || (last.observacion ? JSON.parse(last.observacion) : {}) || {})
-        }
-      }
-    } catch {}
-    setTimeout(() => { criteriosInicialRef.current = false }, 300)
+
     cargarHistorial(e.id)
   }
 
@@ -234,17 +334,31 @@ export function ProfesorHome() {
         if (error) throw error
       }
       if (actividad === 'molino-casa' && (Object.keys(criterios).length > 0 || Object.keys(observaciones).length > 0)) {
-        const evForSupabase: any = { id: `${seleccionado.id}-${fechaDia}-molino`, estudiante_id: seleccionado.id, actividad_id: actividad, fecha: fechaDia, criterios, observacion: JSON.stringify(observaciones), created_at: new Date().toISOString() }
+        const actIdSave = tipoRubrica === 'post' ? 'molino-casa-post' : 'molino-casa'
+        const evIdSave = tipoRubrica === 'post' ? `${seleccionado.id}-${fechaDia}-molino-post` : `${seleccionado.id}-${fechaDia}-molino`
+        const evForSupabase: any = {
+          id: evIdSave,
+          estudiante_id: seleccionado.id,
+          actividad_id: actIdSave,
+          fecha: fechaDia,
+          criterios,
+          observacion: JSON.stringify(observaciones),
+          created_at: new Date().toISOString(),
+        }
         const evLocal: any = { ...evForSupabase, observaciones }
+
         await guardarEvaluacionLocal(evLocal)
         if (navigator.onLine) {
-          const { error } = await (supabase.from as any)('evaluaciones').upsert(evForSupabase)
-          if (error) throw error
-          else await db.evaluacionesPendientes.delete(ev.id).catch(() => {})
+          try {
+            const { error } = await (supabase.from as any)('evaluaciones').upsert(evForSupabase)
+            if (!error) {
+              await db.evaluacionesPendientes.delete(evIdSave).catch(() => {})
+            }
+          } catch {}
         }
         setHistorialEval((p) => {
-          const filtrado = p.filter((x: any) => x.id !== ev.id && x.fecha !== fechaDia)
-          return [ev, ...filtrado]
+          const filtrado = p.filter((x: any) => x.id !== evIdSave)
+          return [evLocal, ...filtrado]
         })
       }
       setMensaje('✓ Guardado local (se sincronizará)')
@@ -262,7 +376,7 @@ export function ProfesorHome() {
     setPasoHasta(h.pasos_completados?.length || 0)
     setEmocionInicio(h.emocion_inicio || undefined)
     setEmocionFin(h.emocion_fin || undefined)
-    if (h.actividad_id === 'molino-casa' || h.criterios) {
+    if (h.actividad_id === 'molino-casa' || h.actividad_id === 'molino-casa-post' || h.criterios) {
       try {
         const fechaKey = (h.fecha || h.created_at).split('T')[0]
         const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', h.estudiante_id).eq('fecha', fechaKey).limit(1).single()
@@ -365,9 +479,24 @@ export function ProfesorHome() {
                 </select>
                 <p className="text-[11px] text-ink/50 mt-2">{pasoHasta}/{totalPasos} pasos</p>
                 {actividad === 'molino-casa' && (
-                  <button onClick={() => { setRubricaOpen(true); pushState('rubrica') }} className="w-full mt-4 bg-white border-2 border-terracota text-terracota rounded-full py-3 font-bold hover:bg-terracota hover:text-white transition">
-                    Evaluar rúbrica STEAM (15 ítems) →
-                  </button>
+                  <div className="grid grid-cols-2 gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => abrirRubrica('pre')}
+                      className="w-full bg-white border-2 border-terracota text-terracota rounded-full py-2.5 font-bold hover:bg-terracota hover:text-white transition text-[13px] flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-terracota inline-block"></span>
+                      Rúbrica PRE
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => abrirRubrica('post')}
+                      className="w-full bg-white border-2 border-paramo text-paramo rounded-full py-2.5 font-bold hover:bg-paramo hover:text-white transition text-[13px] flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-paramo inline-block"></span>
+                      Rúbrica POST
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -385,7 +514,8 @@ export function ProfesorHome() {
                       ;[...historial, ...historialEval].forEach((h: any) => {
                         const d = new Date(h.fecha || h.created_at)
                         const fechaKey = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
-                        const key = `${fechaKey}|${h.actividad_id || (h.criterios ? 'molino-casa' : 'origami-conejo')}`
+                        const isEval = !!h.criterios
+                        const key = `${fechaKey}|${isEval ? 'eval' : 'prog'}|${h.actividad_id || 'origami-conejo'}`
                         if (!porActividadDia.has(key) || new Date(h.fecha || h.created_at) > new Date(porActividadDia.get(key).fecha || porActividadDia.get(key).created_at)) {
                           porActividadDia.set(key, h)
                         }
@@ -404,7 +534,8 @@ export function ProfesorHome() {
                         })
                         .map(([fecha, items]: any) => {
                         const progresosDia = items.filter((x:any)=> !x.criterios)
-                        const evalMolino = items.find((x:any)=> x.criterios && x.actividad_id === 'molino-casa')
+                        const evalMolinoPre = items.find((x:any)=> x.criterios && x.actividad_id === 'molino-casa')
+                        const evalMolinoPost = items.find((x:any)=> x.criterios && x.actividad_id === 'molino-casa-post')
                         return (
                           <button key={fecha} onClick={() => setDiaDetalle({ fecha, items })} className="w-full text-left bg-white rounded-xl border border-[#E8E0D0] p-3 hover:shadow-paper transition text-left">
                             <p className="text-[12px] font-bold tracking-wide text-ink capitalize">{fecha}</p>
@@ -414,13 +545,14 @@ export function ProfesorHome() {
                                 const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
                                 return (
                                   <span key={it.id} className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-paper border border-[#E8E0D0] px-2.5 py-1 rounded-full">
-                                    <span className="font-bold tracking-widest uppercase bg-ink text-white px-1.5 py-0.5 rounded-full text-[10px]">{it.actividad_id === 'molino-casa' ? 'Molino' : 'Origami'}</span>
+                                    <span className="font-bold tracking-widest uppercase bg-ink text-white px-1.5 py-0.5 rounded-full text-[10px]">{it.actividad_id === 'molino-casa-post' ? 'Molino POST' : it.actividad_id === 'molino-casa' ? 'Molino PRE' : 'Origami'}</span>
                                     <span>{EMOJI_MAP[it.emocion_inicio] || '—'}</span>→<span>{EMOJI_MAP[it.emocion_fin] || '—'}</span>
                                     <span className="text-ink/60">{hechos}/{totalIt}</span>
                                   </span>
                                 )
                               })}
-                              {evalMolino && <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-terracota text-white px-2.5 py-1 rounded-full">Rúbrica {Object.keys(evalMolino.criterios||{}).length}/15</span>}
+                              {evalMolinoPre && <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-terracota text-white px-2.5 py-1 rounded-full">PRE {Object.keys(evalMolinoPre.criterios||{}).length}/15</span>}
+                              {evalMolinoPost && <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-paramo text-white px-2.5 py-1 rounded-full">POST {Object.keys(evalMolinoPost.criterios||{}).length}/15</span>}
                             </div>
                             <p className="text-[11px] text-terracota font-semibold mt-2">Ver detalle →</p>
                           </button>
@@ -447,8 +579,7 @@ export function ProfesorHome() {
               {diaDetalle.items.filter((x:any)=> !x.criterios).map((it: any) => {
                 const hechos = it.pasos_completados?.length || 0
                 const totalIt = ACTIVIDADES.find((a) => a.id === it.actividad_id)?.pasos || totalPasos
-                const label = it.actividad_id === 'molino-casa' ? 'Molino + Casa' : 'Origami Conejo'
-                const isMolino = it.actividad_id === 'molino-casa'
+                const label = it.actividad_id === 'origami-conejo' ? 'Origami Conejo' : 'Molino + Casa'
                 return (
                   <div key={it.id} className="bg-white rounded-xl border border-[#E8E0D0] p-3">
                     <p className="text-[11px] font-bold tracking-widest uppercase text-white bg-ink px-2 py-1 rounded-full inline-block">{label}</p>
@@ -459,45 +590,80 @@ export function ProfesorHome() {
                       <span className="ml-auto text-[11px] font-bold bg-paper border border-[#E8E0D0] px-2 py-1 rounded-full">{hechos}/{totalIt} pasos</span>
                     </div>
                     <p className="text-[11px] text-ink/50 mt-2">{hechos === totalIt ? 'Completado' : hechos === 0 ? 'Sin avance' : `Avance ${hechos}/${totalIt}`}</p>
-                    {isMolino && (
-                      <button
-                        onClick={async () => {
-                          const fechaKey = (it.fecha || it.created_at || new Date().toISOString()).split('T')[0]
-                          let ev: any = diaDetalle.items.find((x:any)=> x.criterios && (x.fecha || x.created_at || '').startsWith(fechaKey))
-                          if (!ev) {
-                            try {
-                              const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', it.estudiante_id).eq('fecha', fechaKey).limit(1).single()
-                              if (data?.criterios) ev = data
-                            } catch {}
-                          }
-                          if (!ev || !ev.criterios) {
-                            try {
-                              const localAll = await db.evaluaciones.where('estudiante_id').equals(it.estudiante_id).toArray()
-                              const found = localAll.find((e:any)=> e.fecha === fechaKey)
-                              if (found?.criterios) ev = found
-                            } catch {}
-                          }
-                          if (ev && ev.criterios) {
-                            setDiaRubrica(ev)
-                            setCriterios(ev.criterios || {})
-                            try {
-                              const obs = (ev as any).observaciones || (ev as any).observacion
-                              setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
-                            } catch { setObservaciones({}) }
-                          } else {
-                            setDiaRubrica({ ...it, criterios: {}, fecha: fechaKey, id: `${it.estudiante_id}-${fechaKey}-molino`, actividad_id: 'molino-casa' })
-                            setCriterios({})
-                            setObservaciones({})
-                          }
-                        }}
-                        className="w-full mt-3 bg-white border border-terracota text-terracota rounded-full py-2 text-[12px] font-bold hover:bg-terracota hover:text-white transition flex items-center justify-center gap-1.5"
-                      >
-                        📋 Ver rúbrica
-                      </button>
-                    )}
                   </div>
                 )
               })}
+
+              {(() => {
+                const fechaKey = (diaDetalle.items[0]?.fecha || diaDetalle.items[0]?.created_at || new Date().toISOString()).split('T')[0]
+                const evalPre = diaDetalle.items.find((x: any) => x.criterios && x.actividad_id === 'molino-casa')
+                const evalPost = diaDetalle.items.find((x: any) => x.criterios && x.actividad_id === 'molino-casa-post')
+                const tieneMolino = diaDetalle.items.some((x: any) => x.actividad_id === 'molino-casa' || x.actividad_id === 'molino-casa-post' || x.criterios)
+                if (!tieneMolino) return null
+
+                return (
+                  <div className="bg-white rounded-xl border border-[#E8E0D0] p-3 space-y-2 mt-2">
+                    <p className="text-[11px] font-bold tracking-widest uppercase text-ink">Rúbricas STEAM — Molino + Casa</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div className="p-3 rounded-xl border border-terracota/30 bg-terracota/5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold bg-terracota text-white px-2 py-0.5 rounded-full">PRE</span>
+                          <span className="text-[11px] font-bold text-ink/70">
+                            {evalPre ? `${Object.keys(evalPre.criterios || {}).length}/15 ítems` : 'No registrada'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (evalPre) {
+                              setDiaRubrica(evalPre)
+                            } else {
+                              setDiaRubrica({
+                                estudiante_id: seleccionado?.id,
+                                actividad_id: 'molino-casa',
+                                fecha: fechaKey,
+                                criterios: {},
+                                id: `${seleccionado?.id}-${fechaKey}-molino`,
+                              })
+                            }
+                          }}
+                          className="w-full bg-white border border-terracota text-terracota rounded-full py-1.5 text-[12px] font-bold hover:bg-terracota hover:text-white transition flex items-center justify-center gap-1"
+                        >
+                          📋 Ver Rúbrica PRE
+                        </button>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-paramo/30 bg-paramo/5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold bg-paramo text-white px-2 py-0.5 rounded-full">POST</span>
+                          <span className="text-[11px] font-bold text-ink/70">
+                            {evalPost ? `${Object.keys(evalPost.criterios || {}).length}/15 ítems` : 'No registrada'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (evalPost) {
+                              setDiaRubrica(evalPost)
+                            } else {
+                              setDiaRubrica({
+                                estudiante_id: seleccionado?.id,
+                                actividad_id: 'molino-casa-post',
+                                fecha: fechaKey,
+                                criterios: {},
+                                id: `${seleccionado?.id}-${fechaKey}-molino-post`,
+                              })
+                            }
+                          }}
+                          className="w-full bg-white border border-paramo text-paramo rounded-full py-1.5 text-[12px] font-bold hover:bg-paramo hover:text-white transition flex items-center justify-center gap-1"
+                        >
+                          📋 Ver Rúbrica POST
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
@@ -508,8 +674,47 @@ export function ProfesorHome() {
           <div className="absolute inset-0 bg-ink/60 backdrop-blur-sm" onClick={() => setDiaRubrica(null)} />
           <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-[min(860px,95vw)] max-h-[85vh] overflow-auto paper-texture flex flex-col">
             <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
-              <div><p className="font-display font-bold text-ink">Rúbrica del día — {new Date(diaRubrica.fecha || diaRubrica.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric'})}</p><p className="text-[11px] text-ink/50">Solo lectura — {Object.keys(diaRubrica.criterios||{}).length}/15 ítems</p></div>
-              <button onClick={() => setDiaRubrica(null)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist">← Volver</button>
+              <div>
+                <p className="font-display font-bold text-ink flex items-center gap-2">
+                  Rúbrica STEAM — Molino
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${diaRubrica.actividad_id === 'molino-casa-post' ? 'bg-paramo text-white' : 'bg-terracota text-white'}`}>
+                    {diaRubrica.actividad_id === 'molino-casa-post' ? 'POST' : 'PRE'}
+                  </span>
+                </p>
+                <p className="text-[11px] text-ink/50">
+                  {new Date(diaRubrica.fecha || diaRubrica.created_at).toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric'})} · {Object.keys(diaRubrica.criterios||{}).length}/15 ítems evaluados
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isPost = diaRubrica.actividad_id === 'molino-casa-post'
+                    setDiaRubrica(null)
+                    abrirRubrica(isPost ? 'post' : 'pre')
+                  }}
+                  className="px-3.5 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold text-ink hover:bg-mist transition flex items-center gap-1"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportarRubricaCSV(
+                      diaRubrica.actividad_id === 'molino-casa-post' ? 'POST' : 'PRE',
+                      diaRubrica.criterios || {},
+                      diaRubrica.observaciones || diaRubrica.observacion || {},
+                      (diaRubrica.fecha || diaRubrica.created_at || '').split('T')[0]
+                    )
+                  }}
+                  className="px-4 py-2 rounded-full bg-paramo text-white text-[13px] font-semibold hover:bg-paramo/90 transition shadow-sm"
+                >
+                  Exportar CSV
+                </button>
+                <button type="button" onClick={() => setDiaRubrica(null)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist transition">
+                  Volver
+                </button>
+              </div>
             </div>
             <div className="p-4 overflow-auto">
               <div className="overflow-x-auto">
@@ -524,7 +729,7 @@ export function ProfesorHome() {
                       })()
                       const obs = (() => {
                         try {
-                          const o = diaRubrica.observaciones || (diaRubrica.observacion ? JSON.parse(diaRubrica.observacion) : {})
+                          const o = diaRubrica.observaciones || (diaRubrica.observacion ? (typeof diaRubrica.observacion === 'string' ? JSON.parse(diaRubrica.observacion) : diaRubrica.observacion) : {})
                           return typeof o === 'string' ? o : (o[areaKey] || '')
                         } catch { return '' }
                       })()
@@ -537,7 +742,7 @@ export function ProfesorHome() {
                               <td className="p-2 text-ink/80 leading-relaxed text-[11px]">{it.ind}</td>
                               {[1,2,3,4].map((n) => (
                                 <td key={n} className="p-2 text-center">
-                                  <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-[11px] font-bold ${diaRubrica.criterios?.[it.key]===n ? 'bg-paramo text-white' : 'bg-paper border border-[#E8E0D0] text-ink/30'}`}>{diaRubrica.criterios?.[it.key]===n ? '●' : '○'}</span>
+                                  <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-[11px] font-bold ${diaRubrica.criterios?.[it.key]===n ? (diaRubrica.actividad_id === 'molino-casa-post' ? 'bg-paramo text-white' : 'bg-terracota text-white') : 'bg-paper border border-[#E8E0D0] text-ink/30'}`}>{diaRubrica.criterios?.[it.key]===n ? '●' : '○'}</span>
                                 </td>
                               ))}
                             </tr>
@@ -558,9 +763,58 @@ export function ProfesorHome() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => setRubricaOpen(false)} />
           <div className="relative bg-paper rounded-paper border border-[#E8E0D0] shadow-lift w-[min(860px,95vw)] max-h-[85vh] overflow-auto paper-texture flex flex-col">
-            <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex items-center justify-between">
-              <div><p className="font-display font-bold text-ink">Rúbrica STEAM — Molino (1 a 4)</p><p className="text-[11px] text-ink/50">1 En inicio · 2 En desarrollo · 3 Competente · 4 Destacado</p></div>
-              <button onClick={() => setRubricaOpen(false)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist" aria-label="Volver">← Volver</button>
+            <div className="sticky top-0 bg-white border-b border-[#E8E0D0] p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  <p className="font-display font-bold text-ink">
+                    Rúbrica STEAM — Molino
+                  </p>
+                  <p className="text-[11px] text-ink/50">1 En inicio · 2 En desarrollo · 3 Competente · 4 Destacado</p>
+                </div>
+                <div className="flex bg-paper border border-[#E8E0D0] p-1 rounded-full gap-1 ml-auto sm:ml-0">
+                  <button
+                    type="button"
+                    onClick={() => cambiarTipoRubrica('pre')}
+                    className={`px-3.5 py-1 rounded-full text-[12px] font-bold transition ${
+                      tipoRubrica === 'pre'
+                        ? 'bg-terracota text-white shadow-sm'
+                        : 'text-ink/60 hover:text-ink'
+                    }`}
+                  >
+                    PRE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cambiarTipoRubrica('post')}
+                    className={`px-3.5 py-1 rounded-full text-[12px] font-bold transition ${
+                      tipoRubrica === 'post'
+                        ? 'bg-paramo text-white shadow-sm'
+                        : 'text-ink/60 hover:text-ink'
+                    }`}
+                  >
+                    POST
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportarRubricaCSV(
+                      tipoRubrica.toUpperCase(),
+                      criterios,
+                      observaciones,
+                      new Date().toISOString().split('T')[0]
+                    )
+                  }}
+                  className="px-4 py-2 rounded-full bg-paramo text-white text-[13px] font-semibold hover:bg-paramo/90 transition shadow-sm"
+                >
+                  Exportar CSV
+                </button>
+                <button type="button" onClick={() => setRubricaOpen(false)} className="px-4 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist transition" aria-label="Volver">
+                  ← Volver
+                </button>
+              </div>
             </div>
             <div className="p-4 overflow-auto">
               <div className="overflow-x-auto">
@@ -590,15 +844,28 @@ export function ProfesorHome() {
                               <td className="p-2 text-ink/80 leading-relaxed">{it.ind}</td>
                               {[1,2,3,4].map((n) => (
                                 <td key={n} className="p-2 text-center">
-                                  <input type="radio" name={it.key} checked={criterios[it.key]===n} onChange={() => setCriterios((p)=>({...p, [it.key]:n}))} className="w-4 h-4 accent-paramo" aria-label={`${it.key} ${n}`} />
+                                  <input
+                                    type="radio"
+                                    name={it.key}
+                                    checked={criterios[it.key]===n}
+                                    onChange={() => actualizarCriterio(it.key, n)}
+                                    className={`w-4 h-4 ${tipoRubrica === 'post' ? 'accent-paramo' : 'accent-terracota'}`}
+                                    aria-label={`${it.key} ${n}`}
+                                  />
                                 </td>
                               ))}
-                              <td className="p-2 text-center font-bold text-paramo">{criterios[it.key] || '—'}</td>
+                              <td className={`p-2 text-center font-bold ${tipoRubrica === 'post' ? 'text-paramo' : 'text-terracota'}`}>{criterios[it.key] || '—'}</td>
                             </tr>
                           ))}
                           <tr><td colSpan={7} className="p-2 bg-white">
                             <label className="text-[11px] font-bold tracking-widest uppercase text-ink/60">Observación {areaKey}</label>
-                            <textarea value={observaciones[areaKey] || ''} onChange={(e)=> setObservaciones((p)=> ({...p, [areaKey]: e.target.value}))} placeholder={`Escribe observación para ${area.area}...`} rows={2} className="w-full mt-1 bg-paper border border-[#E8E0D0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-paramo/30 focus:bg-white resize-none" />
+                            <textarea
+                              value={observaciones[areaKey] || ''}
+                              onChange={(e)=> actualizarObservacion(areaKey, e.target.value)}
+                              placeholder={`Escribe observación para ${area.area}...`}
+                              rows={2}
+                              className="w-full mt-1 bg-paper border border-[#E8E0D0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-paramo/30 focus:bg-white resize-none"
+                            />
                           </td></tr>
                         </React.Fragment>
                       )
@@ -606,7 +873,7 @@ export function ProfesorHome() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[11px] text-ink/50 mt-3">Promedio general molino: {(() => { const v = Object.values(criterios) as number[]; return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : '—' })()} / 4</p>
+              <p className="text-[11px] text-ink/50 mt-3">Promedio general molino ({tipoRubrica.toUpperCase()}): {(() => { const v = Object.values(criterios) as number[]; return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : '—' })()} / 4</p>
             </div>
           </div>
         </div>
