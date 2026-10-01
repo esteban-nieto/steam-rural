@@ -5,7 +5,7 @@ import { supabase } from '../../services/supabase'
 import type { Estudiante } from '../../services/supabase'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
-import { db, guardarProgresoLocal, guardarEvaluacionLocal } from '../../services/db'
+import { db, guardarProgresoLocal, guardarEvaluacionLocal, generarEvaluacionId } from '../../services/db'
 
 const ACTIVIDADES = [
   { id: 'origami-conejo', label: 'Actividad 1- Origami conejo', pasos: 11 },
@@ -58,6 +58,7 @@ export function ProfesorHome() {
   const [historialEval, setHistorialEval] = useState<any[]>([])
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [mensajeRubrica, setMensajeRubrica] = useState('')
   const [diaDetalle, setDiaDetalle] = useState<{ fecha: string; items: any[] } | null>(null)
   const [diaRubrica, setDiaRubrica] = useState<any | null>(null)
   const [tipoRubrica, setTipoRubrica] = useState<'pre' | 'post'>('pre')
@@ -135,7 +136,7 @@ export function ProfesorHome() {
     if (!seleccionado) return
     const fechaDia = new Date().toISOString().split('T')[0]
     const actId = tipo === 'post' ? 'molino-casa-post' : 'molino-casa'
-    const evId = tipo === 'post' ? `${seleccionado.id}-${fechaDia}-molino-post` : `${seleccionado.id}-${fechaDia}-molino`
+    const evId = generarEvaluacionId(seleccionado.id, fechaDia, actId)
     const evForSupabase: any = {
       id: evId,
       estudiante_id: seleccionado.id,
@@ -161,14 +162,24 @@ export function ProfesorHome() {
         })
         if (!error) {
           await db.evaluacionesPendientes.delete(evId).catch(() => {})
+          setMensajeRubrica('✓ Rúbrica guardada en la nube')
+        } else {
+          console.error('Error guardando en Supabase:', error)
+          setMensajeRubrica('✓ Guardado local (pendiente sincronizar)')
         }
-      } catch {}
+      } catch (err) {
+        console.error('Excepción guardando en Supabase:', err)
+        setMensajeRubrica('✓ Guardado local (pendiente sincronizar)')
+      }
+    } else {
+      setMensajeRubrica('✓ Guardado local (sin conexión)')
     }
 
     setHistorialEval((p) => {
       const filtrado = p.filter((x: any) => x.id !== evId)
       return [evLocal, ...filtrado]
     })
+    setTimeout(() => setMensajeRubrica(''), 3000)
   }
 
   const actualizarCriterio = (key: string, val: number) => {
@@ -335,7 +346,7 @@ export function ProfesorHome() {
       }
       if (actividad === 'molino-casa' && (Object.keys(criterios).length > 0 || Object.keys(observaciones).length > 0)) {
         const actIdSave = tipoRubrica === 'post' ? 'molino-casa-post' : 'molino-casa'
-        const evIdSave = tipoRubrica === 'post' ? `${seleccionado.id}-${fechaDia}-molino-post` : `${seleccionado.id}-${fechaDia}-molino`
+        const evIdSave = generarEvaluacionId(seleccionado.id, fechaDia, actIdSave)
         const evForSupabase: any = {
           id: evIdSave,
           estudiante_id: seleccionado.id,
@@ -353,18 +364,22 @@ export function ProfesorHome() {
             const { error } = await (supabase.from as any)('evaluaciones').upsert(evForSupabase)
             if (!error) {
               await db.evaluacionesPendientes.delete(evIdSave).catch(() => {})
+            } else {
+              console.error('Error guardando evaluación en Supabase:', error)
             }
-          } catch {}
+          } catch (err) {
+            console.error('Excepción guardando evaluación:', err)
+          }
         }
         setHistorialEval((p) => {
           const filtrado = p.filter((x: any) => x.id !== evIdSave)
           return [evLocal, ...filtrado]
         })
       }
-      setMensaje('✓ Guardado local (se sincronizará)')
+      setMensaje(navigator.onLine ? '✓ Registro guardado correctamente' : '✓ Guardado local (se sincronizará al conectar)')
       setHistorial((prev) => [progreso, ...prev])
     } catch {
-      setMensaje('✓ Guardado local (se sincronizará)')
+      setMensaje('✓ Guardado local (se sincronizará al conectar)')
     }
     setGuardando(false)
     setTimeout(() => setMensaje(''), 2500)
@@ -623,7 +638,7 @@ export function ProfesorHome() {
                                 actividad_id: 'molino-casa',
                                 fecha: fechaKey,
                                 criterios: {},
-                                id: `${seleccionado?.id}-${fechaKey}-molino`,
+                                id: generarEvaluacionId(seleccionado?.id || '', fechaKey, 'molino-casa'),
                               })
                             }
                           }}
@@ -651,7 +666,7 @@ export function ProfesorHome() {
                                 actividad_id: 'molino-casa-post',
                                 fecha: fechaKey,
                                 criterios: {},
-                                id: `${seleccionado?.id}-${fechaKey}-molino-post`,
+                                id: generarEvaluacionId(seleccionado?.id || '', fechaKey, 'molino-casa-post'),
                               })
                             }
                           }}
@@ -874,6 +889,40 @@ export function ProfesorHome() {
                 </table>
               </div>
               <p className="text-[11px] text-ink/50 mt-3">Promedio general molino ({tipoRubrica.toUpperCase()}): {(() => { const v = Object.values(criterios) as number[]; return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : '—' })()} / 4</p>
+            </div>
+            <div className="sticky bottom-0 bg-white border-t border-[#E8E0D0] p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-ink/60 font-medium">
+                  {Object.keys(criterios).length}/15 ítems evaluados
+                </span>
+                {mensajeRubrica && (
+                  <span className={`text-[12px] font-bold px-3 py-1 rounded-full ${
+                    mensajeRubrica.includes('nube') || mensajeRubrica.includes('correctamente')
+                      ? 'bg-moss/10 text-moss border border-moss/20'
+                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}>
+                    {mensajeRubrica}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => guardarRubricaDirecto(tipoRubrica, criterios, observaciones)}
+                  className={`px-5 py-2.5 rounded-full text-white text-[13px] font-bold transition shadow-sm ${
+                    tipoRubrica === 'post' ? 'bg-paramo hover:bg-[#1e3a0f]' : 'bg-terracota hover:bg-[#a65e2a]'
+                  }`}
+                >
+                  💾 Guardar Rúbrica {tipoRubrica.toUpperCase()}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRubricaOpen(false)}
+                  className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-mist transition"
+                >
+                  Listo / Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

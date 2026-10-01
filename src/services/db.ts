@@ -10,6 +10,26 @@ export type Evaluacion = {
   observacion?: string
 }
 
+export function generarEvaluacionId(estudianteId: string, fecha: string, actividadId: string): string {
+  const str = `${estudianteId}:${fecha}:${actividadId}`
+  let h1 = 0xdeadbeef ^ 0, h2 = 0x41c6ce57 ^ 0, h3 = 0x6291a27e ^ 0, h4 = 0x9e3779b9 ^ 0
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ (ch << 5), 1597334677)
+    h3 = Math.imul(h3 ^ (ch << 11), 3847528343)
+    h4 = Math.imul(h4 ^ (ch << 16), 3344921057)
+  }
+  const toHex = (n: number) => (n >>> 0).toString(16).padStart(8, '0')
+  const hex = toHex(h1) + toHex(h2) + toHex(h3) + toHex(h4)
+  const p1 = hex.substring(0, 8)
+  const p2 = hex.substring(8, 12)
+  const p3 = '4' + hex.substring(13, 16)
+  const p4 = 'a' + hex.substring(17, 20)
+  const p5 = hex.substring(20, 32)
+  return `${p1}-${p2}-${p3}-${p4}-${p5}`
+}
+
 class SteamDB extends Dexie {
   progresos!: Table<Progreso, string>
   estudiantes!: Table<Estudiante, string>
