@@ -250,12 +250,21 @@ export function ProfesorHome() {
     await cargarRubricaPorTipo(nuevoTipo)
   }
 
-  const exportarRubricaCSV = (
-    tipoLabel: string,
-    criteriosMap: Record<string, number>,
-    obsMap: Record<string, string> | string,
+  const generarHtmlRubrica = ({
+    tipoLabel,
+    criteriosMap,
+    obsMap,
+    fechaDoc,
+    estNombre,
+    estCurso,
+  }: {
+    tipoLabel: string
+    criteriosMap: Record<string, number>
+    obsMap: Record<string, string> | string
     fechaDoc: string
-  ) => {
+    estNombre: string
+    estCurso: string
+  }) => {
     let parsedObs: Record<string, string> = {}
     if (typeof obsMap === 'string') {
       try { parsedObs = obsMap ? JSON.parse(obsMap) : {} } catch { parsedObs = {} }
@@ -274,8 +283,6 @@ export function ProfesorHome() {
       3: 'Competente',
       4: 'Destacado',
     }
-    const estNombre = seleccionado?.nombre || 'Estudiante'
-    const estCurso = seleccionado?.curso || curso
     const todos = Object.values(criteriosMap || {}).filter((v) => v != null && v !== '') as number[]
     const promGeneral = todos.length ? (todos.reduce((a, b) => a + Number(b), 0) / todos.length).toFixed(1) : '—'
     const isPost = tipoLabel === 'POST'
@@ -312,23 +319,144 @@ export function ProfesorHome() {
         ${obsHtml}`
     }).join('')
 
-    const html = `<!DOCTYPE html>
+    return `<div class="page" style="page-break-after:always; margin-bottom:32px;">
+      <header style="background:${accent};">
+        <h1>Rúbrica STEAM — Molino + Casa <span class="badge" style="color:${accent};">${esc(tipoLabel)}</span></h1>
+        <p>1 En inicio · 2 En desarrollo · 3 Competente · 4 Destacado</p>
+      </header>
+      <section class="meta">
+        <div><span>Estudiante</span><strong>${esc(estNombre)}</strong></div>
+        <div><span>Curso</span><strong>${esc(estCurso)}</strong></div>
+        <div><span>Fecha</span><strong>${esc(fechaTxt || 'Sin registrar')}</strong></div>
+        <div><span>Promedio general</span><strong>${esc(promGeneral)} / 4</strong></div>
+      </section>
+      <p class="scale">El recuadro sombreado indica el nivel alcanzado en cada indicador.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Área / Dimensión</th>
+            <th>Indicador observable</th>
+            <th class="n">1</th><th class="n">2</th><th class="n">3</th><th class="n">4</th>
+            <th class="n">Prom.</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${areasHtml}
+        </tbody>
+      </table>
+      <footer>Evaluación ${esc(tipoLabel)} · Niveles: ${Object.entries(NIVELES).map(([k, v]) => `${k} ${v}`).join(' · ')}</footer>
+    </div>`
+  }
+
+  const descargarArchivoHtml = (htmlContent: string, filename: string) => {
+    const blob = new Blob(['\uFEFF', htmlContent], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.rel = 'noopener'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      a.remove()
+      URL.revokeObjectURL(url)
+    }, 2000)
+  }
+
+  const [descargandoGrupo, setDescargandoGrupo] = useState(false)
+
+  const descargarTodasLasRubricasGrupo = async () => {
+    if (!estudiantes || estudiantes.length === 0) {
+      alert('No hay estudiantes en este grupo.')
+      return
+    }
+
+    setDescargandoGrupo(true)
+    try {
+      const estudianteIds = estudiantes.map((e) => e.id)
+      let evalsRemotas: any[] = []
+      if (navigator.onLine) {
+        try {
+          const { data } = await (supabase.from as any)('evaluaciones')
+            .select('*')
+            .in('estudiante_id', estudianteIds)
+            .order('fecha', { ascending: false })
+          if (data) evalsRemotas = data
+        } catch {}
+      }
+
+      const evalsLocales = await db.evaluaciones
+        .where('estudiante_id')
+        .anyOf(estudianteIds)
+        .toArray()
+        .catch(() => [])
+
+      const evalsMap = new Map<string, any>()
+      evalsLocales.forEach((ev: any) => evalsMap.set(ev.id, ev))
+      evalsRemotas.forEach((ev: any) => evalsMap.set(ev.id, ev))
+      const todasEvals = Array.from(evalsMap.values())
+
+      const paginasHtml: string[] = []
+      let totalRubricasEncontradas = 0
+
+      for (const est of estudiantes) {
+        const evalsEst = todasEvals.filter((ev: any) => ev.estudiante_id === est.id)
+        const evPre = evalsEst.find((ev: any) => ev.actividad_id === 'molino-casa' && ev.criterios && Object.keys(ev.criterios).length > 0)
+        const evPost = evalsEst.find((ev: any) => ev.actividad_id === 'molino-casa-post' && ev.criterios && Object.keys(ev.criterios).length > 0)
+
+        if (evPre) {
+          totalRubricasEncontradas++
+          paginasHtml.push(
+            generarHtmlRubrica({
+              tipoLabel: 'PRE',
+              criteriosMap: evPre.criterios || {},
+              obsMap: evPre.observaciones || evPre.observacion || {},
+              fechaDoc: (evPre.fecha || evPre.created_at || '').split('T')[0],
+              estNombre: est.nombre,
+              estCurso: est.curso || curso,
+            })
+          )
+        }
+
+        if (evPost) {
+          totalRubricasEncontradas++
+          paginasHtml.push(
+            generarHtmlRubrica({
+              tipoLabel: 'POST',
+              criteriosMap: evPost.criterios || {},
+              obsMap: evPost.observaciones || evPost.observacion || {},
+              fechaDoc: (evPost.fecha || evPost.created_at || '').split('T')[0],
+              estNombre: est.nombre,
+              estCurso: est.curso || curso,
+            })
+          )
+        }
+      }
+
+      if (paginasHtml.length === 0) {
+        alert(`No se encontraron rúbricas evaluadas (PRE o POST) para los estudiantes del grupo ${curso}.`)
+        setDescargandoGrupo(false)
+        return
+      }
+
+      const htmlCompleto = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Rúbrica STEAM Molino — ${esc(tipoLabel)} — ${esc(estNombre)}</title>
+<title>Rúbricas STEAM Grupo ${curso} — PRE y POST (${totalRubricasEncontradas} evaluaciones)</title>
 <style>
-  :root { --accent:${accent}; --soft:${accentSoft}; --ink:#1A2E1A; --paper:#FDF8F0; --line:#E4D9C8; }
+  :root { --ink:#1A2E1A; --paper:#FDF8F0; --line:#E4D9C8; }
   * { box-sizing:border-box; }
-  body { margin:0; background:#EFE6D6; color:var(--ink); font-family:Calibri,"Segoe UI",Inter,sans-serif; }
+  body { margin:0; background:#EFE6D6; color:var(--ink); font-family:Calibri,"Segoe UI",Inter,sans-serif; padding:16px 0; }
   .page { max-width:980px; margin:24px auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:0 10px 28px rgba(26,46,26,.08); }
-  header { background:var(--accent); color:#fff; padding:22px 24px 18px; }
+  header { color:#fff; padding:22px 24px 18px; }
   header h1 { margin:0 0 4px; font-size:22px; letter-spacing:.02em; }
   header p { margin:0; opacity:.9; font-size:13px; }
-  .badge { display:inline-block; background:#fff; color:var(--accent); font-weight:700; font-size:11px; letter-spacing:.12em; padding:3px 10px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+  .badge { display:inline-block; background:#fff; font-weight:700; font-size:11px; letter-spacing:.12em; padding:3px 10px; border-radius:999px; margin-left:8px; vertical-align:middle; }
   .meta { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px 24px; background:#fff; border-bottom:1px solid var(--line); }
-  .meta div { background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .meta div { background:#faf7f0; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
   .meta span { display:block; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; opacity:.65; }
   .meta strong { display:block; margin-top:3px; font-size:15px; }
   .scale { padding:10px 24px 0; font-size:12px; opacity:.75; }
@@ -336,13 +464,99 @@ export function ProfesorHome() {
   th { background:var(--ink); color:#fff; font-size:11px; letter-spacing:.06em; text-transform:uppercase; text-align:left; padding:9px 8px; }
   th.n, td.n, td.prom, td.item-score { text-align:center; width:42px; }
   td { border-bottom:1px solid var(--line); padding:8px; font-size:13px; vertical-align:top; }
-  tr.area td { background:var(--soft); font-weight:700; font-size:14px; border-bottom:none; }
-  tr.desc td { background:var(--soft); font-size:12px; color:#4a5c4a; padding-top:0; padding-bottom:10px; }
+  tr.area td { background:#faf6ee; font-weight:700; font-size:14px; border-bottom:none; }
+  tr.desc td { background:#faf6ee; font-size:12px; color:#4a5c4a; padding-top:0; padding-bottom:10px; }
   td.dim { white-space:nowrap; font-weight:700; width:150px; }
   td.ind { line-height:1.4; color:#2b3a2b; }
   td.n { font-weight:700; color:#c5b9a6; }
-  td.n.on { background:var(--accent); color:#fff; border-radius:4px; }
-  td.item-score { font-weight:700; color:var(--accent); }
+  td.n.on { background:#2D5016; color:#fff; border-radius:4px; }
+  td.item-score { font-weight:700; color:#2D5016; }
+  tr.obs td { background:#fff8ee; font-size:12px; line-height:1.45; }
+  tr.obs.empty td { color:#8a8073; background:#faf7f1; }
+  footer { padding:0 24px 20px; font-size:12px; opacity:.7; }
+  .banner-grupo { max-width:980px; margin:0 auto 20px; background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; }
+  @media print {
+    body { background:#fff; padding:0; }
+    .banner-grupo { display:none; }
+    .page { margin:0 0 20mm 0; border:none; border-radius:0; box-shadow:none; page-break-after:always; }
+  }
+  @media (max-width:720px) {
+    .meta { grid-template-columns:1fr 1fr; }
+    table { width:calc(100% - 24px); margin:12px; }
+  }
+</style>
+</head>
+<body>
+  <div class="banner-grupo">
+    <div>
+      <h2 style="margin:0 0 4px; font-size:20px; color:#1A2E1A;">Compilado de Rúbricas STEAM — Grupo ${curso}</h2>
+      <p style="margin:0; font-size:13px; color:#666;">Incluye evaluaciones PRE y POST evaluadas (${totalRubricasEncontradas} rúbricas en total)</p>
+    </div>
+    <button onclick="window.print()" style="background:#2D5016; color:#fff; border:none; padding:10px 18px; border-radius:999px; font-weight:bold; cursor:pointer; font-size:13px;">Imprimir / Guardar como PDF</button>
+  </div>
+  ${paginasHtml.join('\n')}
+</body>
+</html>`
+
+      const fechaHoy = new Date().toISOString().split('T')[0]
+      const filename = `rubricas_grupo_${curso}_PRE_POST_${fechaHoy}.html`
+      descargarArchivoHtml(htmlCompleto, filename)
+    } catch (err) {
+      console.error(err)
+      alert('Ocurrió un error al compilar las rúbricas del grupo.')
+    } finally {
+      setDescargandoGrupo(false)
+    }
+  }
+
+  const exportarRubricaCSV = (
+    tipoLabel: string,
+    criteriosMap: Record<string, number>,
+    obsMap: Record<string, string> | string,
+    fechaDoc: string
+  ) => {
+    const estNombre = seleccionado?.nombre || 'Estudiante'
+    const estCurso = seleccionado?.curso || curso
+    const bodyPage = generarHtmlRubrica({
+      tipoLabel,
+      criteriosMap,
+      obsMap,
+      fechaDoc,
+      estNombre,
+      estCurso,
+    })
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rúbrica STEAM Molino — ${tipoLabel} — ${estNombre}</title>
+<style>
+  :root { --ink:#1A2E1A; --paper:#FDF8F0; --line:#E4D9C8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#EFE6D6; color:var(--ink); font-family:Calibri,"Segoe UI",Inter,sans-serif; }
+  .page { max-width:980px; margin:24px auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:0 10px 28px rgba(26,46,26,.08); }
+  header { color:#fff; padding:22px 24px 18px; }
+  header h1 { margin:0 0 4px; font-size:22px; letter-spacing:.02em; }
+  header p { margin:0; opacity:.9; font-size:13px; }
+  .badge { display:inline-block; background:#fff; font-weight:700; font-size:11px; letter-spacing:.12em; padding:3px 10px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+  .meta { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:16px 24px; background:#fff; border-bottom:1px solid var(--line); }
+  .meta div { background:#faf7f0; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .meta span { display:block; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; opacity:.65; }
+  .meta strong { display:block; margin-top:3px; font-size:15px; }
+  .scale { padding:10px 24px 0; font-size:12px; opacity:.75; }
+  table { width:calc(100% - 48px); margin:12px 24px 24px; border-collapse:collapse; background:#fff; }
+  th { background:var(--ink); color:#fff; font-size:11px; letter-spacing:.06em; text-transform:uppercase; text-align:left; padding:9px 8px; }
+  th.n, td.n, td.prom, td.item-score { text-align:center; width:42px; }
+  td { border-bottom:1px solid var(--line); padding:8px; font-size:13px; vertical-align:top; }
+  tr.area td { background:#faf6ee; font-weight:700; font-size:14px; border-bottom:none; }
+  tr.desc td { background:#faf6ee; font-size:12px; color:#4a5c4a; padding-top:0; padding-bottom:10px; }
+  td.dim { white-space:nowrap; font-weight:700; width:150px; }
+  td.ind { line-height:1.4; color:#2b3a2b; }
+  td.n { font-weight:700; color:#c5b9a6; }
+  td.n.on { background:var(--accent, #2D5016); color:#fff; border-radius:4px; }
+  td.item-score { font-weight:700; color:var(--accent, #2D5016); }
   tr.obs td { background:#fff8ee; font-size:12px; line-height:1.45; }
   tr.obs.empty td { color:#8a8073; background:#faf7f1; }
   footer { padding:0 24px 20px; font-size:12px; opacity:.7; }
@@ -357,51 +571,15 @@ export function ProfesorHome() {
 </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <h1>Rúbrica STEAM — Molino + Casa <span class="badge">${esc(tipoLabel)}</span></h1>
-      <p>1 En inicio · 2 En desarrollo · 3 Competente · 4 Destacado</p>
-    </header>
-    <section class="meta">
-      <div><span>Estudiante</span><strong>${esc(estNombre)}</strong></div>
-      <div><span>Curso</span><strong>${esc(estCurso)}</strong></div>
-      <div><span>Fecha</span><strong>${esc(fechaTxt)}</strong></div>
-      <div><span>Promedio general</span><strong>${esc(promGeneral)} / 4</strong></div>
-    </section>
-    <p class="scale">El recuadro sombreado indica el nivel alcanzado en cada indicador.</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Área / Dimensión</th>
-          <th>Indicador observable</th>
-          <th class="n">1</th><th class="n">2</th><th class="n">3</th><th class="n">4</th>
-          <th class="n">Prom.</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${areasHtml}
-      </tbody>
-    </table>
-    <footer>Exportado desde el panel del profesor · Niveles: ${Object.entries(NIVELES).map(([k, v]) => `${k} ${v}`).join(' · ')}</footer>
-  </div>
+  ${bodyPage}
 </body>
 </html>`
 
     const filename = `rubrica_molino_${tipoLabel}_${String(estNombre).replace(/\s+/g, '_')}_${fechaDoc || 'sin_fecha'}.html`
-    const blob = new Blob(['\uFEFF', html], { type: 'application/octet-stream' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.rel = 'noopener'
-    a.style.display = 'none'
-    document.body.appendChild(a)
-    a.click()
-    setTimeout(() => {
-      a.remove()
-      URL.revokeObjectURL(url)
-    }, 2000)
+    descargarArchivoHtml(html, filename)
   }
+
+
 
   const cargarHistorial = async (estudianteId: string) => {
     try {
@@ -546,10 +724,23 @@ export function ProfesorHome() {
 
   return (
     <Layout title="Panel Profesor">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">{estudiantes.length} estudiantes</span>
-        <span className="text-[12px] text-ink/50">en</span>
-        <span className="font-display font-bold text-ink">{curso}</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">{estudiantes.length} estudiantes</span>
+          <span className="text-[12px] text-ink/50">en</span>
+          <span className="font-display font-bold text-ink">{curso}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={descargarTodasLasRubricasGrupo}
+          disabled={descargandoGrupo || estudiantes.length === 0}
+          className="flex items-center gap-2 bg-white border-2 border-slateProfesor text-slateProfesor hover:bg-slateProfesor hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition disabled:opacity-50 disabled:pointer-events-none"
+          title="Descarga un documento único con todas las rúbricas PRE y POST registradas para este curso"
+        >
+          <span>📥</span>
+          <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas del Grupo (PRE y POST)'}</span>
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
