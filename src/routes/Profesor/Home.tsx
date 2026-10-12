@@ -136,6 +136,7 @@ export function ProfesorHome() {
 
   const [actividadesLocales, setActividadesLocales] = useState<Actividad[]>([])
   const [modalActividadOpen, setModalActividadOpen] = useState(false)
+  const [modoCreacionActividad, setModoCreacionActividad] = useState<'selector' | 'pasos' | 'video'>('selector')
   const [nombreNuevaAct, setNombreNuevaAct] = useState('')
   const [numPasosNuevaAct, setNumPasosNuevaAct] = useState<number>(3)
   const [pasosNuevaAct, setPasosNuevaAct] = useState<PasoActividad[]>([
@@ -908,17 +909,10 @@ export function ProfesorHome() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setModalVideoOpen(true)}
-            className="flex items-center gap-1.5 bg-terracota text-white hover:bg-[#a65e2a] px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
-            title="Sube un video completo y divídelo en pasos definiendo segundo de inicio y fin"
-          >
-            <span>🎬</span>
-            <span>Partir video en pasos</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setModalActividadOpen(true)}
+            onClick={() => {
+              setModoCreacionActividad('selector')
+              setModalActividadOpen(true)
+            }}
             className="flex items-center gap-1.5 bg-paramo text-white hover:bg-[#1e3a0f] px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
           >
             <span>✨</span>
@@ -989,7 +983,10 @@ export function ProfesorHome() {
                   <h4 className="font-display font-bold text-ink">Actividades</h4>
                   <button
                     type="button"
-                    onClick={() => setModalActividadOpen(true)}
+                    onClick={() => {
+                      setModoCreacionActividad('selector')
+                      setModalActividadOpen(true)
+                    }}
                     className="text-[12px] font-bold text-paramo hover:underline flex items-center gap-1"
                   >
                     + Agregar actividad
@@ -1478,266 +1475,309 @@ export function ProfesorHome() {
         </div>
       )}
 
-      {/* MODAL CREAR NUEVA ACTIVIDAD */}
+      {/* MODAL ÚNICO DE CREACIÓN DE ACTIVIDADES */}
       {modalActividadOpen && (
         <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
-            {/* Header */}
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
+            {/* Header unificado */}
             <div className="bg-slateProfesor text-white px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="font-display font-bold text-lg">Nueva Actividad Práctica</h3>
-                <p className="text-white/70 text-xs">Define los pasos, el texto explicativo y su multimedia</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalActividadOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Contenido / Formulario */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
-                  Nombre de la Actividad *
-                </label>
-                <input
-                  type="text"
-                  value={nombreNuevaAct}
-                  onChange={(e) => setNombreNuevaAct(e.target.value)}
-                  placeholder="Ej. Construcción de Carrito con Cartón"
-                  className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-paramo focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
-                    Número de Pasos
-                  </label>
-                  <span className="text-xs font-bold text-paramo bg-mist px-2.5 py-0.5 rounded-full">
-                    {numPasosNuevaAct} pasos configurados
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={30}
-                    value={numPasosNuevaAct}
-                    onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
-                    className="flex-1 accent-paramo"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={numPasosNuevaAct}
-                    onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
-                    className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Lista dinámica de pasos */}
-              <div className="space-y-4 pt-2">
-                <h4 className="font-display font-bold text-ink text-sm flex items-center gap-2">
-                  <span>📝</span>
-                  <span>Detalle de cada paso</span>
-                </h4>
-
-                {pasosNuevaAct.map((pasoItem) => (
-                  <div
-                    key={pasoItem.paso}
-                    className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold bg-slateProfesor text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        Paso {pasoItem.paso}
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                        Instrucción o texto del paso
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={pasoItem.texto}
-                        onChange={(e) =>
-                          setPasosNuevaAct((prev) =>
-                            prev.map((p) =>
-                              p.paso === pasoItem.paso ? { ...p, texto: e.target.value } : p
-                            )
-                          )
-                        }
-                        placeholder={`Describe qué debe hacer el estudiante en el paso ${pasoItem.paso}...`}
-                        className="w-full bg-white border border-[#E8E0D0] rounded-xl p-3 text-xs outline-none focus:border-paramo resize-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                        Multimedia (Foto o Video)
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <label className="cursor-pointer bg-white border border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl px-4 py-2 text-xs font-semibold text-ink/70 hover:text-paramo transition flex items-center gap-2 shadow-sm">
-                          <span>📎</span>
-                          <span>{pasoItem.multimedia ? 'Cambiar archivo' : 'Subir foto o video'}</span>
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0]
-                              if (f) handleSubirMultimediaPaso(pasoItem.paso, f)
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-
-                        {pasoItem.multimedia && (
-                          <div className="flex items-center gap-2 bg-mist px-3 py-1.5 rounded-lg border border-moss/20">
-                            {pasoItem.tipoMultimedia === 'video' ? (
-                              <span className="text-xs font-medium text-moss flex items-center gap-1">
-                                🎬 Video cargado
-                              </span>
-                            ) : (
-                              <img
-                                src={pasoItem.multimedia}
-                                alt="Vista previa"
-                                className="w-8 h-8 object-cover rounded border border-[#E8E0D0]"
-                              />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPasosNuevaAct((prev) =>
-                                  prev.map((p) =>
-                                    p.paso === pasoItem.paso
-                                      ? { ...p, multimedia: undefined, tipoMultimedia: undefined }
-                                      : p
-                                  )
-                                )
-                              }
-                              className="text-xs text-red-500 font-bold hover:underline ml-1"
-                            >
-                              ✕ Quitar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Footer de acción */}
-            <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setModalActividadOpen(false)}
-                className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={guardarNuevaActividad}
-                className="px-6 py-2.5 rounded-full bg-paramo text-white text-xs font-bold hover:bg-[#1e3a0f] transition shadow-paper"
-              >
-                ✓ Guardar Actividad
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL PARTIR VIDEO EN PASOS */}
-      {modalVideoOpen && (
-        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
-            {/* Header */}
-            <div className="bg-terracota text-white px-6 py-4 flex items-center justify-between">
-              <div>
                 <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                  <span>🎬</span>
-                  <span>Partir Video en Pasos</span>
+                  <span>✨</span>
+                  <span>
+                    {modoCreacionActividad === 'selector'
+                      ? 'Crear Nueva Actividad'
+                      : modoCreacionActividad === 'pasos'
+                      ? 'Creación Paso a Paso (Fotos/Videos individuales)'
+                      : 'Dividir Video Completo en Pasos'}
+                  </span>
                 </h3>
-                <p className="text-white/80 text-xs">
-                  Sube tu video, define los pasos y el segundo exacto de inicio y fin de cada uno
+                <p className="text-white/70 text-xs">
+                  {modoCreacionActividad === 'selector'
+                    ? 'Selecciona cómo deseas diseñar la actividad para tus estudiantes'
+                    : modoCreacionActividad === 'pasos'
+                    ? 'Escribe el texto de cada paso y sube fotos o videos individuales'
+                    : 'Sube un video completo y define los segundos de inicio y fin de cada paso'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setModalVideoOpen(false)}
+                onClick={() => setModalActividadOpen(false)}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold"
               >
                 ✕
               </button>
             </div>
 
-            {/* Contenido */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
-                  Nombre de la Actividad *
-                </label>
-                <input
-                  type="text"
-                  value={nombreActVideo}
-                  onChange={(e) => setNombreActVideo(e.target.value)}
-                  placeholder="Ej. Armado del Molino de Viento con Motor"
-                  className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-terracota focus:bg-white"
-                />
-              </div>
+            {/* VISTA 1: SELECTOR DE OPCIONES */}
+            {modoCreacionActividad === 'selector' && (
+              <div className="p-8 space-y-6">
+                <div className="text-center max-w-md mx-auto">
+                  <h4 className="font-display font-bold text-ink text-xl mb-2">
+                    ¿Qué tipo de actividad deseas crear?
+                  </h4>
+                  <p className="text-sm text-ink/60">
+                    Puedes diseñar una guía ilustrada paso a paso o partir un video largo en fragmentos interactivos.
+                  </p>
+                </div>
 
-              {/* Subida y Previsualización del Video */}
-              <div className="p-4 rounded-2xl bg-paper/60 border border-[#E8E0D0]">
-                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-2">
-                  Archivo de Video *
-                </label>
-                {!videoFileUrl ? (
-                  <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota bg-white rounded-2xl p-6 flex flex-col items-center justify-center gap-2 transition text-center">
-                    <span className="text-3xl">📁</span>
-                    <span className="text-sm font-bold text-ink">Haz clic para subir el video (MP4 / WebM)</span>
-                    <span className="text-xs text-ink/50">El video se procesará de forma 100% local en tu dispositivo</span>
+                <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModoCreacionActividad('pasos')}
+                    className="group text-left p-6 rounded-2xl border-2 border-[#E8E0D0] hover:border-paramo hover:bg-mist/30 transition-all flex flex-col gap-3 shadow-sm hover:shadow"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-paramo/10 text-paramo flex items-center justify-center text-2xl group-hover:scale-105 transition">
+                      📸
+                    </div>
+                    <div>
+                      <h5 className="font-display font-bold text-ink text-base">
+                        Creación paso por paso
+                      </h5>
+                      <p className="text-xs text-ink/60 mt-1 leading-relaxed">
+                        Define la cantidad de pasos, escribe la instrucción de cada uno y adjunta fotos o videos cortos individuales.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-paramo uppercase tracking-wider mt-auto flex items-center gap-1">
+                      Elegir esta opción →
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModoCreacionActividad('video')}
+                    className="group text-left p-6 rounded-2xl border-2 border-[#E8E0D0] hover:border-terracota hover:bg-terracota/5 transition-all flex flex-col gap-3 shadow-sm hover:shadow"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-terracota/10 text-terracota flex items-center justify-center text-2xl group-hover:scale-105 transition">
+                      🎬
+                    </div>
+                    <div>
+                      <h5 className="font-display font-bold text-ink text-base">
+                        Dividir video en pasos
+                      </h5>
+                      <p className="text-xs text-ink/60 mt-1 leading-relaxed">
+                        Sube un video completo (ej. armado del molino), define cuántos pasos tiene y marca los segundos exactos de cada corte.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-terracota uppercase tracking-wider mt-auto flex items-center gap-1">
+                      Elegir esta opción →
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* VISTA 2: CREACIÓN PASO POR PASO */}
+            {modoCreacionActividad === 'pasos' && (
+              <>
+                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E8E0D0]">
+                    <button
+                      type="button"
+                      onClick={() => setModoCreacionActividad('selector')}
+                      className="text-xs font-bold text-ink/60 hover:text-ink flex items-center gap-1"
+                    >
+                      ← Cambiar tipo de actividad
+                    </button>
+                    <span className="text-xs font-bold text-paramo bg-mist px-2.5 py-0.5 rounded-full">
+                      Paso a paso ilustrado
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                      Nombre de la Actividad *
+                    </label>
                     <input
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0]
-                        if (f) handleSubirVideoPrincipal(f)
-                      }}
-                      className="hidden"
+                      type="text"
+                      value={nombreNuevaAct}
+                      onChange={(e) => setNombreNuevaAct(e.target.value)}
+                      placeholder="Ej. Construcción de Carrito con Cartón"
+                      className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-paramo focus:bg-white"
                     />
-                  </label>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="aspect-video bg-black rounded-xl overflow-hidden max-h-60 mx-auto">
-                      <video
-                        ref={previewVideoRef}
-                        src={videoFileUrl}
-                        controls
-                        onLoadedMetadata={(e) => {
-                          const dur = (e.currentTarget as HTMLVideoElement).duration || 0
-                          setVideoDuracion(dur)
-                          cambiarCantidadPasosVideo(numPasosVideo)
-                        }}
-                        className="w-full h-full object-contain"
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                        Número de Pasos
+                      </label>
+                      <span className="text-xs font-bold text-paramo bg-mist px-2.5 py-0.5 rounded-full">
+                        {numPasosNuevaAct} pasos configurados
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={1}
+                        max={30}
+                        value={numPasosNuevaAct}
+                        onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
+                        className="flex-1 accent-paramo"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={numPasosNuevaAct}
+                        onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
+                        className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between text-xs text-ink/60">
-                      <span>
-                        ⏱️ Duración detectada:{' '}
-                        <strong>
-                          {Math.floor(videoDuracion / 60)}m {Math.floor(videoDuracion % 60)}s ({Math.round(videoDuracion)} segs)
-                        </strong>
-                      </span>
-                      <label className="cursor-pointer text-terracota font-bold hover:underline">
-                        Cambiar video
+                  </div>
+
+                  {/* Lista de pasos */}
+                  <div className="space-y-4 pt-2">
+                    <h4 className="font-display font-bold text-ink text-sm flex items-center gap-2">
+                      <span>📝</span>
+                      <span>Detalle de cada paso</span>
+                    </h4>
+
+                    {pasosNuevaAct.map((pasoItem) => (
+                      <div
+                        key={pasoItem.paso}
+                        className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold bg-slateProfesor text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            Paso {pasoItem.paso}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                            Instrucción o texto del paso
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={pasoItem.texto}
+                            onChange={(e) =>
+                              setPasosNuevaAct((prev) =>
+                                prev.map((p) =>
+                                  p.paso === pasoItem.paso ? { ...p, texto: e.target.value } : p
+                                )
+                              )
+                            }
+                            placeholder={`Describe qué debe hacer el estudiante en el paso ${pasoItem.paso}...`}
+                            className="w-full bg-white border border-[#E8E0D0] rounded-xl p-3 text-xs outline-none focus:border-paramo resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                            Multimedia (Foto o Video)
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <label className="cursor-pointer bg-white border border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl px-4 py-2 text-xs font-semibold text-ink/70 hover:text-paramo transition flex items-center gap-2 shadow-sm">
+                              <span>📎</span>
+                              <span>{pasoItem.multimedia ? 'Cambiar archivo' : 'Subir foto o video'}</span>
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0]
+                                  if (f) handleSubirMultimediaPaso(pasoItem.paso, f)
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+
+                            {pasoItem.multimedia && (
+                              <div className="flex items-center gap-2 bg-mist px-3 py-1.5 rounded-lg border border-moss/20">
+                                {pasoItem.tipoMultimedia === 'video' ? (
+                                  <span className="text-xs font-medium text-moss flex items-center gap-1">
+                                    🎬 Video cargado
+                                  </span>
+                                ) : (
+                                  <img
+                                    src={pasoItem.multimedia}
+                                    alt="Vista previa"
+                                    className="w-8 h-8 object-cover rounded border border-[#E8E0D0]"
+                                  />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPasosNuevaAct((prev) =>
+                                      prev.map((p) =>
+                                        p.paso === pasoItem.paso
+                                          ? { ...p, multimedia: undefined, tipoMultimedia: undefined }
+                                          : p
+                                      )
+                                    )
+                                  }
+                                  className="text-xs text-red-500 font-bold hover:underline ml-1"
+                                >
+                                  ✕ Quitar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModoCreacionActividad('selector')}
+                    className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="button"
+                    onClick={guardarNuevaActividad}
+                    className="px-6 py-2.5 rounded-full bg-paramo text-white text-xs font-bold hover:bg-[#1e3a0f] transition shadow-paper"
+                  >
+                    ✓ Guardar Actividad
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* VISTA 3: DIVIDIR VIDEO EN PASOS */}
+            {modoCreacionActividad === 'video' && (
+              <>
+                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E8E0D0]">
+                    <button
+                      type="button"
+                      onClick={() => setModoCreacionActividad('selector')}
+                      className="text-xs font-bold text-ink/60 hover:text-ink flex items-center gap-1"
+                    >
+                      ← Cambiar tipo de actividad
+                    </button>
+                    <span className="text-xs font-bold text-terracota bg-terracota/10 px-2.5 py-0.5 rounded-full">
+                      Video segmentado
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                      Nombre de la Actividad *
+                    </label>
+                    <input
+                      type="text"
+                      value={nombreActVideo}
+                      onChange={(e) => setNombreActVideo(e.target.value)}
+                      placeholder="Ej. Armado del Molino de Viento con Motor"
+                      className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-terracota focus:bg-white"
+                    />
+                  </div>
+
+                  {/* Subida y Previsualización del Video */}
+                  <div className="p-4 rounded-2xl bg-paper/60 border border-[#E8E0D0]">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-2">
+                      Archivo de Video *
+                    </label>
+                    {!videoFileUrl ? (
+                      <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota bg-white rounded-2xl p-6 flex flex-col items-center justify-center gap-2 transition text-center">
+                        <span className="text-3xl">📁</span>
+                        <span className="text-sm font-bold text-ink">Haz clic para subir el video (MP4 / WebM)</span>
+                        <span className="text-xs text-ink/50">El video se procesará de forma 100% local en tu dispositivo</span>
                         <input
                           type="file"
                           accept="video/*"
@@ -1748,168 +1788,203 @@ export function ProfesorHome() {
                           className="hidden"
                         />
                       </label>
-                    </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="aspect-video bg-black rounded-xl overflow-hidden max-h-60 mx-auto">
+                          <video
+                            ref={previewVideoRef}
+                            src={videoFileUrl}
+                            controls
+                            onLoadedMetadata={(e) => {
+                              const dur = (e.currentTarget as HTMLVideoElement).duration || 0
+                              setVideoDuracion(dur)
+                              cambiarCantidadPasosVideo(numPasosVideo)
+                            }}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-ink/60">
+                          <span>
+                            ⏱️ Duración detectada:{' '}
+                            <strong>
+                              {Math.floor(videoDuracion / 60)}m {Math.floor(videoDuracion % 60)}s ({Math.round(videoDuracion)} segs)
+                            </strong>
+                          </span>
+                          <label className="cursor-pointer text-terracota font-bold hover:underline">
+                            Cambiar video
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0]
+                                if (f) handleSubirVideoPrincipal(f)
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* Selector de número de pasos */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
-                    Número de Pasos en que se dividirá el video
-                  </label>
-                  <span className="text-xs font-bold text-terracota bg-mist px-2.5 py-0.5 rounded-full">
-                    {numPasosVideo} pasos
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={25}
-                    value={numPasosVideo}
-                    onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
-                    className="flex-1 accent-terracota"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    max={25}
-                    value={numPasosVideo}
-                    onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
-                    className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Configuración de segmentos por paso */}
-              <div className="space-y-4 pt-1">
-                <h4 className="font-display font-bold text-ink text-sm flex items-center justify-between">
-                  <span>⏱️ Intervalos de tiempo por cada paso</span>
-                  <span className="text-xs font-normal text-ink/50">
-                    Usa el botón "Probar tramo" para escuchar y ver el corte exacto
-                  </span>
-                </h4>
-
-                {segmentosVideo.map((seg) => (
-                  <div
-                    key={seg.paso}
-                    className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold bg-terracota text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        Paso {seg.paso}
-                      </span>
-                      {videoFileUrl && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (previewVideoRef.current) {
-                              previewVideoRef.current.currentTime = seg.start
-                              previewVideoRef.current.play()
-                              const checkEnd = () => {
-                                if (previewVideoRef.current && previewVideoRef.current.currentTime >= seg.end) {
-                                  previewVideoRef.current.pause()
-                                  previewVideoRef.current.removeEventListener('timeupdate', checkEnd)
-                                }
-                              }
-                              previewVideoRef.current.addEventListener('timeupdate', checkEnd)
-                            }
-                          }}
-                          className="text-xs font-bold text-terracota hover:underline flex items-center gap-1"
-                        >
-                          ▶ Probar tramo ({seg.start}s a {seg.end}s)
-                        </button>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                        Instrucción o subtítulo del paso
+                  {/* Selector de número de pasos */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                        Número de Pasos en que se dividirá el video
                       </label>
+                      <span className="text-xs font-bold text-terracota bg-mist px-2.5 py-0.5 rounded-full">
+                        {numPasosVideo} pasos
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <input
-                        type="text"
-                        value={seg.texto}
-                        onChange={(e) =>
-                          setSegmentosVideo((prev) =>
-                            prev.map((s) => (s.paso === seg.paso ? { ...s, texto: e.target.value } : s))
-                          )
-                        }
-                        placeholder={`Ej. Medir y recortar la base de cartón`}
-                        className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs outline-none focus:border-terracota"
+                        type="range"
+                        min={1}
+                        max={25}
+                        value={numPasosVideo}
+                        onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
+                        className="flex-1 accent-terracota"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={25}
+                        value={numPasosVideo}
+                        onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
+                        className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
                       />
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                          Segundo de Inicio (start)
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={seg.start}
-                            onChange={(e) =>
-                              setSegmentosVideo((prev) =>
-                                prev.map((s) =>
-                                  s.paso === seg.paso ? { ...s, start: Math.max(0, Number(e.target.value)) } : s
-                                )
-                              )
-                            }
-                            className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
-                          />
-                          <span className="text-xs text-ink/50 font-bold">seg</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                          Segundo de Fin (end)
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={seg.end}
-                            onChange={(e) =>
-                              setSegmentosVideo((prev) =>
-                                prev.map((s) =>
-                                  s.paso === seg.paso ? { ...s, end: Math.max(0, Number(e.target.value)) } : s
-                                )
-                              )
-                            }
-                            className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
-                          />
-                          <span className="text-xs text-ink/50 font-bold">seg</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Footer de acción */}
-            <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setModalVideoOpen(false)}
-                className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={guardarActividadVideoSegmentado}
-                className="px-6 py-2.5 rounded-full bg-terracota text-white text-xs font-bold hover:bg-[#a65e2a] transition shadow-paper"
-              >
-                ✓ Guardar Video en Pasos
-              </button>
-            </div>
+                  {/* Intervalos por paso */}
+                  <div className="space-y-4 pt-1">
+                    <h4 className="font-display font-bold text-ink text-sm flex items-center justify-between">
+                      <span>⏱️ Intervalos de tiempo por cada paso</span>
+                      <span className="text-xs font-normal text-ink/50">
+                        Usa el botón "Probar tramo" para calibrar
+                      </span>
+                    </h4>
+
+                    {segmentosVideo.map((seg) => (
+                      <div
+                        key={seg.paso}
+                        className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold bg-terracota text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            Paso {seg.paso}
+                          </span>
+                          {videoFileUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (previewVideoRef.current) {
+                                  previewVideoRef.current.currentTime = seg.start
+                                  previewVideoRef.current.play()
+                                  const checkEnd = () => {
+                                    if (previewVideoRef.current && previewVideoRef.current.currentTime >= seg.end) {
+                                      previewVideoRef.current.pause()
+                                      previewVideoRef.current.removeEventListener('timeupdate', checkEnd)
+                                    }
+                                  }
+                                  previewVideoRef.current.addEventListener('timeupdate', checkEnd)
+                                }
+                              }}
+                              className="text-xs font-bold text-terracota hover:underline flex items-center gap-1"
+                            >
+                              ▶ Probar tramo ({seg.start}s a {seg.end}s)
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                            Instrucción o subtítulo del paso
+                          </label>
+                          <input
+                            type="text"
+                            value={seg.texto}
+                            onChange={(e) =>
+                              setSegmentosVideo((prev) =>
+                                prev.map((s) => (s.paso === seg.paso ? { ...s, texto: e.target.value } : s))
+                              )
+                            }
+                            placeholder={`Ej. Medir y recortar la base de cartón`}
+                            className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs outline-none focus:border-terracota"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                              Segundo de Inicio (start)
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={seg.start}
+                                onChange={(e) =>
+                                  setSegmentosVideo((prev) =>
+                                    prev.map((s) =>
+                                      s.paso === seg.paso ? { ...s, start: Math.max(0, Number(e.target.value)) } : s
+                                    )
+                                  )
+                                }
+                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                              />
+                              <span className="text-xs text-ink/50 font-bold">seg</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                              Segundo de Fin (end)
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={seg.end}
+                                onChange={(e) =>
+                                  setSegmentosVideo((prev) =>
+                                    prev.map((s) =>
+                                      s.paso === seg.paso ? { ...s, end: Math.max(0, Number(e.target.value)) } : s
+                                    )
+                                  )
+                                }
+                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                              />
+                              <span className="text-xs text-ink/50 font-bold">seg</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModoCreacionActividad('selector')}
+                    className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="button"
+                    onClick={guardarActividadVideoSegmentado}
+                    className="px-6 py-2.5 rounded-full bg-terracota text-white text-xs font-bold hover:bg-[#a65e2a] transition shadow-paper"
+                  >
+                    ✓ Guardar Video en Pasos
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
