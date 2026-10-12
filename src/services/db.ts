@@ -30,6 +30,21 @@ export function generarEvaluacionId(estudianteId: string, fecha: string, activid
   return `${p1}-${p2}-${p3}-${p4}-${p5}`
 }
 
+export type PasoActividad = {
+  paso: number
+  texto: string
+  multimedia?: string // data URL o blob url (imagen o video)
+  tipoMultimedia?: 'imagen' | 'video'
+}
+
+export type Actividad = {
+  id: string
+  nombre: string
+  numeroPasos: number
+  pasos: PasoActividad[]
+  fechaCreacion: string
+}
+
 class SteamDB extends Dexie {
   progresos!: Table<Progreso, string>
   estudiantes!: Table<Estudiante, string>
@@ -37,6 +52,7 @@ class SteamDB extends Dexie {
   estudiantesPendientes!: Table<Estudiante, string>
   evaluaciones!: Table<Evaluacion, string>
   evaluacionesPendientes!: Table<Evaluacion, string>
+  actividades!: Table<Actividad, string>
 
   constructor() {
     super('steamDB')
@@ -57,6 +73,15 @@ class SteamDB extends Dexie {
       evaluaciones: '&id, estudiante_id, actividad_id, fecha',
       evaluacionesPendientes: '&id, estudiante_id, actividad_id, fecha',
     })
+    this.version(4).stores({
+      progresos: '&id, estudiante_id, actividad_id, fecha',
+      estudiantes: '&id, curso, profesor_id',
+      progresosPendientes: '&id, estudiante_id, actividad_id, fecha',
+      estudiantesPendientes: '&id, curso, profesor_id',
+      evaluaciones: '&id, estudiante_id, actividad_id, fecha',
+      evaluacionesPendientes: '&id, estudiante_id, actividad_id, fecha',
+      actividades: '&id, nombre, fechaCreacion',
+    })
     this.on('blocked', () => {
       this.close()
       setTimeout(() => location.reload(), 500)
@@ -66,6 +91,18 @@ class SteamDB extends Dexie {
 }
 
 export const db = new SteamDB()
+
+export async function guardarActividadLocal(act: Actividad) {
+  await db.actividades.put(act).catch((err) => console.error('Error guardando actividad:', err))
+}
+
+export async function obtenerActividadesLocales(): Promise<Actividad[]> {
+  return await db.actividades.toArray().catch(() => [])
+}
+
+export async function eliminarActividadLocal(id: string) {
+  await db.actividades.delete(id).catch((err) => console.error('Error eliminando actividad:', err))
+}
 
 export async function guardarProgresoLocal(progreso: Progreso) {
   await db.progresos.put(progreso).catch(() => {})

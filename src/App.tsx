@@ -8,17 +8,20 @@ import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
 import { MolinoCasa } from './routes/Estudiante/MolinoCasa'
+import { ActividadDinamica } from './routes/Estudiante/ActividadDinamica'
 import { HistoriaPueblo } from './routes/HistoriaPueblo'
 import { SyncIndicator } from './components/SyncIndicator'
+import type { Actividad } from './services/db'
 
-type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino' | 'historia'
+type View = 'selector' | 'login' | 'registro' | 'profesor' | 'estudiante' | 'origami' | 'molino' | 'historia' | 'actividad_dinamica'
 
 export default function App() {
   const [view, setView] = useState<View>(() => {
     const h = location.hash.replace('#', '') as View
-    return (['selector','login','registro','profesor','estudiante','origami','molino','historia'].includes(h) ? h : 'selector') as View
+    return (['selector','login','registro','profesor','estudiante','origami','molino','historia','actividad_dinamica'].includes(h) ? h : 'selector') as View
   })
   const [session, setSession] = useState<boolean>(false)
+  const [actividadSeleccionada, setActividadSeleccionada] = useState<Actividad | null>(null)
 
   const pushView = (v: View) => {
     try { history.pushState({ view: v }, '', `#${v}`) } catch {}
@@ -190,15 +193,22 @@ export default function App() {
   if (view === 'estudiante')
     return (
       <EstudianteHome
-        onSelect={(id) => {
+        onSelect={(id, actObj) => {
           if (id === 'origami') pushView('origami')
           else if (id === 'molino') pushView('molino')
+          else if (actObj) {
+            setActividadSeleccionada(actObj)
+            pushView('actividad_dinamica')
+          }
         }}
         onBack={() => pushView('selector')}
       />
     )
   if (view === 'origami') return <OrigamiDetalle onBack={() => pushView('estudiante')} />
   if (view === 'molino') return <MolinoCasa onBack={() => pushView('estudiante')} />
+  if (view === 'actividad_dinamica' && actividadSeleccionada) {
+    return <ActividadDinamica actividad={actividadSeleccionada} onBack={() => pushView('estudiante')} />
+  }
   if (view === 'historia') return <HistoriaPueblo onBack={() => pushView('selector')} />
   return null
 }
