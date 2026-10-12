@@ -5,9 +5,19 @@ import { supabase } from '../../services/supabase'
 import type { Estudiante } from '../../services/supabase'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
-import { db, guardarProgresoLocal, guardarEvaluacionLocal, generarEvaluacionId } from '../../services/db'
+import {
+  db,
+  guardarProgresoLocal,
+  guardarEvaluacionLocal,
+  generarEvaluacionId,
+  guardarActividadLocal,
+  obtenerActividadesLocales,
+  eliminarActividadLocal,
+  type Actividad,
+  type PasoActividad,
+} from '../../services/db'
 
-const ACTIVIDADES = [
+const ACTIVIDADES_BASE = [
   { id: 'origami-conejo', label: 'Actividad 1- Origami conejo', pasos: 11 },
   { id: 'molino-casa', label: 'Actividad 2- Molino + Casa', pasos: 20 },
 ]
@@ -124,9 +134,94 @@ export function ProfesorHome() {
     setCursos([...cursos, nuevoCurso]); setCurso(nuevoCurso); setNuevoCurso('')
   }
 
-  const EMOJI_MAP: Record<string, string> = { feliz: '😄', contento: '🙂', neutro: '😐', triste: '😔', enfado: '😠' }
+  const [actividadesLocales, setActividadesLocales] = useState<Actividad[]>([])
+  const [modalActividadOpen, setModalActividadOpen] = useState(false)
+  const [nombreNuevaAct, setNombreNuevaAct] = useState('')
+  const [numPasosNuevaAct, setNumPasosNuevaAct] = useState<number>(3)
+  const [pasosNuevaAct, setPasosNuevaAct] = useState<PasoActividad[]>([
+    { paso: 1, texto: '', multimedia: undefined, tipoMultimedia: 'imagen' },
+    { paso: 2, texto: '', multimedia: undefined, tipoMultimedia: 'imagen' },
+    { paso: 3, texto: '', multimedia: undefined, tipoMultimedia: 'imagen' },
+  ])
 
-  const totalPasos = ACTIVIDADES.find((a) => a.id === actividad)?.pasos || 11
+  const cargarActividadesLocales = async () => {
+    const list = await obtenerActividadesLocales()
+    setActividadesLocales(list)
+  }
+
+  useEffect(() => {
+    cargarActividadesLocales()
+  }, [])
+
+  const todasLasActividades = [
+    ...ACTIVIDADES_BASE,
+    ...actividadesLocales.map((a) => ({
+      id: a.id,
+      label: a.nombre,
+      pasos: a.numeroPasos,
+      esDinamica: true,
+    })),
+  ]
+
+  const totalPasos = todasLasActividades.find((a) => a.id === actividad)?.pasos || 11
+
+  const cambiarCantidadPasos = (cantidad: number) => {
+    const n = Math.max(1, Math.min(50, cantidad))
+    setNumPasosNuevaAct(n)
+    setPasosNuevaAct((prev) => {
+      const nuevoArray: PasoActividad[] = []
+      for (let i = 1; i <= n; i++) {
+        const existente = prev.find((p) => p.paso === i)
+        if (existente) {
+          nuevoArray.push(existente)
+        } else {
+          nuevoArray.push({ paso: i, texto: '', multimedia: undefined, tipoMultimedia: 'imagen' })
+        }
+      }
+      return nuevoArray
+    })
+  }
+
+  const handleSubirMultimediaPaso = (pasoNum: number, file: File) => {
+    const tipo: 'imagen' | 'video' = file.type.startsWith('video') ? 'video' : 'imagen'
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const res = e.target?.result as string
+      setPasosNuevaAct((prev) =>
+        prev.map((p) => (p.paso === pasoNum ? { ...p, multimedia: res, tipoMultimedia: tipo } : p))
+      )
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const guardarNuevaActividad = async () => {
+    if (!nombreNuevaAct.trim()) {
+      alert('Por favor escribe un nombre para la actividad.')
+      return
+    }
+    const nueva: Actividad = {
+      id: `act-${Date.now()}`,
+      nombre: nombreNuevaAct.trim(),
+      numeroPasos: numPasosNuevaAct,
+      pasos: pasosNuevaAct,
+      fechaCreacion: new Date().toISOString(),
+    }
+    await guardarActividadLocal(nueva)
+    await cargarActividadesLocales()
+    setModalActividadOpen(false)
+    setNombreNuevaAct('')
+    cambiarCantidadPasos(3)
+    setMensaje('✓ Nueva actividad creada correctamente')
+    setTimeout(() => setMensaje(''), 2500)
+  }
+
+  const eliminarActividad = async (id: string) => {
+    if (confirm('¿Seguro que deseas eliminar esta actividad?')) {
+      await eliminarActividadLocal(id)
+      await cargarActividadesLocales()
+      if (actividad === id) setActividad('origami-conejo')
+    }
+  }
 
   const guardarRubricaDirecto = async (
     tipo: 'pre' | 'post',
@@ -731,16 +826,27 @@ export function ProfesorHome() {
           <span className="font-display font-bold text-ink">{curso}</span>
         </div>
 
-        <button
-          type="button"
-          onClick={descargarTodasLasRubricasGrupo}
-          disabled={descargandoGrupo || estudiantes.length === 0}
-          className="flex items-center gap-2 bg-white border-2 border-slateProfesor text-slateProfesor hover:bg-slateProfesor hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition disabled:opacity-50 disabled:pointer-events-none"
-          title="Descarga un documento único con todas las rúbricas PRE y POST registradas para este curso"
-        >
-          <span>📥</span>
-          <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas del Grupo (PRE y POST)'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setModalActividadOpen(true)}
+            className="flex items-center gap-1.5 bg-paramo text-white hover:bg-[#1e3a0f] px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
+          >
+            <span>✨</span>
+            <span>+ Nueva Actividad</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={descargarTodasLasRubricasGrupo}
+            disabled={descargandoGrupo || estudiantes.length === 0}
+            className="flex items-center gap-2 bg-white border-2 border-slateProfesor text-slateProfesor hover:bg-slateProfesor hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition disabled:opacity-50 disabled:pointer-events-none"
+            title="Descarga un documento único con todas las rúbricas PRE y POST registradas para este curso"
+          >
+            <span>📥</span>
+            <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas del Grupo'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -790,24 +896,57 @@ export function ProfesorHome() {
               <div><h4 className="font-display font-bold text-ink mb-2">¿Cómo se siente al finalizar?</h4><EmotionPicker value={emocionFin} onSelect={setEmocionFin} /></div>
 
               <div>
-                <h4 className="font-display font-bold text-ink mb-2">Actividades</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-display font-bold text-ink">Actividades</h4>
+                  <button
+                    type="button"
+                    onClick={() => setModalActividadOpen(true)}
+                    className="text-[12px] font-bold text-paramo hover:underline flex items-center gap-1"
+                  >
+                    + Agregar actividad
+                  </button>
+                </div>
                 <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1">
-                  {ACTIVIDADES.map((a) => (
-                    <button
-                      key={a.id}
-                      onClick={() => setActividad(a.id)}
-                      className={`min-w-[220px] w-[220px] snap-start text-left bg-white rounded-2xl border-2 p-4 flex flex-col gap-2 transition ${actividad === a.id ? 'border-terracota shadow-paper bg-mist/30' : 'border-[#E8E0D0] hover:border-terracota/30'}`}
-                    >
-                      <span className="text-[11px] font-bold tracking-widest uppercase text-terracota">{a.id === 'origami-conejo' ? 'Actividad 1' : 'Actividad 2'}</span>
-                      <span className="font-display font-bold text-ink text-[15px] leading-tight">{a.label}</span>
-                      <span className="text-[11px] text-ink/60">{a.pasos} pasos · {a.id === 'molino-casa' ? 'Video + Rúbrica' : 'Papel'}</span>
-                    </button>
+                  {todasLasActividades.map((a, idx) => (
+                    <div key={a.id} className="relative min-w-[220px] w-[220px] snap-start">
+                      <button
+                        onClick={() => setActividad(a.id)}
+                        className={`w-full text-left bg-white rounded-2xl border-2 p-4 flex flex-col gap-2 transition ${
+                          actividad === a.id
+                            ? 'border-terracota shadow-paper bg-mist/30'
+                            : 'border-[#E8E0D0] hover:border-terracota/30'
+                        }`}
+                      >
+                        <span className="text-[11px] font-bold tracking-widest uppercase text-terracota">
+                          Actividad {idx + 1}
+                        </span>
+                        <span className="font-display font-bold text-ink text-[15px] leading-tight">
+                          {a.label}
+                        </span>
+                        <span className="text-[11px] text-ink/60">
+                          {a.pasos} pasos · {a.id === 'molino-casa' ? 'Video + Rúbrica' : a.esDinamica ? 'Personalizada' : 'Papel'}
+                        </span>
+                      </button>
+                      {a.esDinamica && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            eliminarActividad(a.id)
+                          }}
+                          className="absolute top-2 right-2 text-ink/30 hover:text-red-500 font-bold p-1 text-[13px]"
+                          title="Eliminar actividad"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-[#E8E0D0] p-4">
-                <h4 className="font-display font-bold text-ink mb-3">{ACTIVIDADES.find((a) => a.id === actividad)?.label} — ¿Hasta qué paso llegó?</h4>
+                <h4 className="font-display font-bold text-ink mb-3">{todasLasActividades.find((a) => a.id === actividad)?.label} — ¿Hasta qué paso llegó?</h4>
                 <select value={pasoHasta} onChange={(e) => setPasoHasta(Number(e.target.value))} className="w-full bg-paper border border-[#E8E0D0] rounded-full px-4 py-3 text-[14px] font-medium focus:border-paramo/30 focus:bg-white outline-none">
                   <option value={0}>0 — Sin avance</option>
                   {Array.from({ length: totalPasos }, (_, i) => i + 1).map((n) => (
@@ -1245,6 +1384,183 @@ export function ProfesorHome() {
                   Listo / Cerrar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CREAR NUEVA ACTIVIDAD */}
+      {modalActividadOpen && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
+            {/* Header */}
+            <div className="bg-slateProfesor text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-bold text-lg">Nueva Actividad Práctica</h3>
+                <p className="text-white/70 text-xs">Define los pasos, el texto explicativo y su multimedia</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalActividadOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido / Formulario */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                  Nombre de la Actividad *
+                </label>
+                <input
+                  type="text"
+                  value={nombreNuevaAct}
+                  onChange={(e) => setNombreNuevaAct(e.target.value)}
+                  placeholder="Ej. Construcción de Carrito con Cartón"
+                  className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-paramo focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                    Número de Pasos
+                  </label>
+                  <span className="text-xs font-bold text-paramo bg-mist px-2.5 py-0.5 rounded-full">
+                    {numPasosNuevaAct} pasos configurados
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={30}
+                    value={numPasosNuevaAct}
+                    onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
+                    className="flex-1 accent-paramo"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={numPasosNuevaAct}
+                    onChange={(e) => cambiarCantidadPasos(Number(e.target.value))}
+                    className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Lista dinámica de pasos */}
+              <div className="space-y-4 pt-2">
+                <h4 className="font-display font-bold text-ink text-sm flex items-center gap-2">
+                  <span>📝</span>
+                  <span>Detalle de cada paso</span>
+                </h4>
+
+                {pasosNuevaAct.map((pasoItem) => (
+                  <div
+                    key={pasoItem.paso}
+                    className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold bg-slateProfesor text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        Paso {pasoItem.paso}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                        Instrucción o texto del paso
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={pasoItem.texto}
+                        onChange={(e) =>
+                          setPasosNuevaAct((prev) =>
+                            prev.map((p) =>
+                              p.paso === pasoItem.paso ? { ...p, texto: e.target.value } : p
+                            )
+                          )
+                        }
+                        placeholder={`Describe qué debe hacer el estudiante en el paso ${pasoItem.paso}...`}
+                        className="w-full bg-white border border-[#E8E0D0] rounded-xl p-3 text-xs outline-none focus:border-paramo resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                        Multimedia (Foto o Video)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <label className="cursor-pointer bg-white border border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl px-4 py-2 text-xs font-semibold text-ink/70 hover:text-paramo transition flex items-center gap-2 shadow-sm">
+                          <span>📎</span>
+                          <span>{pasoItem.multimedia ? 'Cambiar archivo' : 'Subir foto o video'}</span>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) handleSubirMultimediaPaso(pasoItem.paso, f)
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {pasoItem.multimedia && (
+                          <div className="flex items-center gap-2 bg-mist px-3 py-1.5 rounded-lg border border-moss/20">
+                            {pasoItem.tipoMultimedia === 'video' ? (
+                              <span className="text-xs font-medium text-moss flex items-center gap-1">
+                                🎬 Video cargado
+                              </span>
+                            ) : (
+                              <img
+                                src={pasoItem.multimedia}
+                                alt="Vista previa"
+                                className="w-8 h-8 object-cover rounded border border-[#E8E0D0]"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPasosNuevaAct((prev) =>
+                                  prev.map((p) =>
+                                    p.paso === pasoItem.paso
+                                      ? { ...p, multimedia: undefined, tipoMultimedia: undefined }
+                                      : p
+                                  )
+                                )
+                              }
+                              className="text-xs text-red-500 font-bold hover:underline ml-1"
+                            >
+                              ✕ Quitar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer de acción */}
+            <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setModalActividadOpen(false)}
+                className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={guardarNuevaActividad}
+                className="px-6 py-2.5 rounded-full bg-paramo text-white text-xs font-bold hover:bg-[#1e3a0f] transition shadow-paper"
+              >
+                ✓ Guardar Actividad
+              </button>
             </div>
           </div>
         </div>

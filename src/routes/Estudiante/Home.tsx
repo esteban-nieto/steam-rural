@@ -1,7 +1,23 @@
+import { useState, useEffect } from 'react'
 import { Card } from '../../components/Card'
 import { Layout } from '../../components/Layout'
+import { obtenerActividadesLocales, type Actividad } from '../../services/db'
 
-export function EstudianteHome({ onSelect, onBack }: { onSelect: (id: string) => void; onBack: () => void }) {
+export function EstudianteHome({
+  onSelect,
+  onBack,
+}: {
+  onSelect: (id: string, actividadObj?: Actividad) => void
+  onBack: () => void
+}) {
+  const [actividadesExtra, setActividadesExtra] = useState<Actividad[]>([])
+
+  useEffect(() => {
+    obtenerActividadesLocales().then((acts) => {
+      setActividadesExtra(acts)
+    })
+  }, [])
+
   return (
     <Layout title="Actividades" onBack={onBack}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
@@ -21,6 +37,21 @@ export function EstudianteHome({ onSelect, onBack }: { onSelect: (id: string) =>
           image={`${import.meta.env.BASE_URL}videos/Portada.png`}
           onClick={() => onSelect('molino')}
         />
+
+        {actividadesExtra.map((act) => (
+          <Card
+            key={act.id}
+            title={act.nombre}
+            description={`Actividad creada por el profesor con ${act.numeroPasos} pasos interactivos.`}
+            badge="Personalizada"
+            meta={`${act.numeroPasos} pasos · Práctica`}
+            image={
+              act.pasos.find((p) => p.multimedia && p.tipoMultimedia !== 'video')?.multimedia ||
+              `${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`
+            }
+            onClick={() => onSelect(act.id, act)}
+          />
+        ))}
       </div>
     </Layout>
   )
