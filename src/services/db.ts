@@ -44,6 +44,7 @@ export type Actividad = {
   nombre: string
   numeroPasos: number
   pasos: PasoActividad[]
+  portada?: string // data URL o URL de la imagen de portada
   videoPrincipal?: string // data URL o blob url del video completo segmentado
   tipoActividad?: 'pasos' | 'video_segmentado'
   fechaCreacion: string

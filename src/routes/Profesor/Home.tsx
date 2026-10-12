@@ -21,6 +21,15 @@ const ACTIVIDADES_BASE = [
   { id: 'origami-conejo', label: 'Actividad 1- Origami conejo', pasos: 11 },
   { id: 'molino-casa', label: 'Actividad 2- Molino + Casa', pasos: 20 },
 ]
+const ACTIVIDADES = ACTIVIDADES_BASE
+
+const EMOJI_MAP: Record<string, string> = {
+  feliz: '😄',
+  contento: '🙂',
+  neutro: '😐',
+  triste: '😔',
+  enfado: '😠',
+}
 
 const RUBRICA = [
   { area: '1. CIENCIAS (S)', desc: 'Conocimiento y exploración de fenómenos físicos y transformaciones de energía.', items: [
@@ -195,6 +204,8 @@ export function ProfesorHome() {
     reader.readAsDataURL(file)
   }
 
+  const [portadaNuevaAct, setPortadaNuevaAct] = useState<string | null>(null)
+
   const guardarNuevaActividad = async () => {
     if (!nombreNuevaAct.trim()) {
       alert('Por favor escribe un nombre para la actividad.')
@@ -205,12 +216,14 @@ export function ProfesorHome() {
       nombre: nombreNuevaAct.trim(),
       numeroPasos: numPasosNuevaAct,
       pasos: pasosNuevaAct,
+      portada: portadaNuevaAct || undefined,
       fechaCreacion: new Date().toISOString(),
     }
     await guardarActividadLocal(nueva)
     await cargarActividadesLocales()
     setModalActividadOpen(false)
     setNombreNuevaAct('')
+    setPortadaNuevaAct(null)
     cambiarCantidadPasos(3)
     setMensaje('✓ Nueva actividad creada correctamente')
     setTimeout(() => setMensaje(''), 2500)
@@ -218,6 +231,7 @@ export function ProfesorHome() {
 
   const [modalVideoOpen, setModalVideoOpen] = useState(false)
   const [nombreActVideo, setNombreActVideo] = useState('')
+  const [portadaActVideo, setPortadaActVideo] = useState<string | null>(null)
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null)
   const [videoDuracion, setVideoDuracion] = useState<number>(0)
   const [isDraggingVideo, setIsDraggingVideo] = useState(false)
@@ -301,6 +315,7 @@ export function ProfesorHome() {
       numeroPasos: numPasosVideo,
       tipoActividad: 'video_segmentado',
       videoPrincipal: videoFileUrl,
+      portada: portadaActVideo || undefined,
       pasos: segmentosVideo.map((s) => ({
         paso: s.paso,
         texto: s.texto.trim() || `Paso ${s.paso}`,
@@ -316,6 +331,7 @@ export function ProfesorHome() {
     setModalVideoOpen(false)
     setNombreActVideo('')
     setVideoFileUrl(null)
+    setPortadaActVideo(null)
     setMensaje('✓ Actividad de video por pasos creada correctamente')
     setTimeout(() => setMensaje(''), 2500)
   }
@@ -1622,6 +1638,53 @@ export function ProfesorHome() {
                     />
                   </div>
 
+                  {/* Portada de la actividad */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                      Portada (imagen de presentación)
+                    </label>
+                    {portadaNuevaAct ? (
+                      <div className="flex items-center gap-3 p-3 bg-paper/60 border border-[#E8E0D0] rounded-xl">
+                        <img
+                          src={portadaNuevaAct}
+                          alt="Portada"
+                          className="w-16 h-16 object-cover rounded-lg border border-[#E8E0D0]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-ink">Portada cargada</p>
+                          <p className="text-[11px] text-ink/50">Se mostrará en la tarjeta de la actividad</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPortadaNuevaAct(undefined)}
+                          className="text-xs text-red-500 font-bold hover:underline shrink-0"
+                        >
+                          ✕ Quitar
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl p-4 flex items-center gap-3 bg-white transition">
+                        <span className="text-2xl">🖼️</span>
+                        <div>
+                          <p className="text-xs font-bold text-ink">Subir imagen de portada</p>
+                          <p className="text-[11px] text-ink/50">JPG, PNG o WebP recomendado</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            const reader = new FileReader()
+                            reader.onload = (ev) => setPortadaNuevaAct(ev.target?.result as string)
+                            reader.readAsDataURL(f)
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
@@ -1793,18 +1856,70 @@ export function ProfesorHome() {
                     />
                   </div>
 
+                  {/* Portada de la actividad */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                      Portada (imagen de presentación)
+                    </label>
+                    {portadaActVideo ? (
+                      <div className="flex items-center gap-3 p-3 bg-paper/60 border border-[#E8E0D0] rounded-xl">
+                        <img
+                          src={portadaActVideo}
+                          alt="Portada"
+                          className="w-16 h-16 object-cover rounded-lg border border-[#E8E0D0]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-ink">Portada cargada</p>
+                          <p className="text-[11px] text-ink/50">Se mostrará en la tarjeta de la actividad</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPortadaActVideo(undefined)}
+                          className="text-xs text-red-500 font-bold hover:underline shrink-0"
+                        >
+                          ✕ Quitar
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota rounded-xl p-4 flex items-center gap-3 bg-white transition">
+                        <span className="text-2xl">🖼️</span>
+                        <div>
+                          <p className="text-xs font-bold text-ink">Subir imagen de portada</p>
+                          <p className="text-[11px] text-ink/50">JPG, PNG o WebP recomendado</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            const reader = new FileReader()
+                            reader.onload = (ev) => setPortadaActVideo(ev.target?.result as string)
+                            reader.readAsDataURL(f)
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+
                   {/* Subida y Previsualización del Video con Drag & Drop */}
                   <div
-                    className={`p-4 rounded-2xl border transition-all ${
+                    className={`p-4 rounded-2xl border transition-colors ${
                       isDraggingVideo
-                        ? 'border-terracota bg-terracota/10 scale-[1.01]'
+                        ? 'border-terracota bg-terracota/10'
                         : 'bg-paper/60 border-[#E8E0D0]'
                     }`}
                     onDragOver={(e) => {
                       e.preventDefault()
-                      setIsDraggingVideo(true)
+                      if (!isDraggingVideo) setIsDraggingVideo(true)
                     }}
-                    onDragLeave={() => setIsDraggingVideo(false)}
+                    onDragLeave={(e) => {
+                      // Solo cancelar si salimos del contenedor padre
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setIsDraggingVideo(false)
+                      }
+                    }}
                     onDrop={(e) => {
                       e.preventDefault()
                       setIsDraggingVideo(false)
@@ -1812,7 +1927,7 @@ export function ProfesorHome() {
                       if (file) handleSubirVideoPrincipal(file)
                     }}
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2 pointer-events-none">
                       <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
                         Archivo de Video *
                       </label>
@@ -1825,15 +1940,15 @@ export function ProfesorHome() {
                       <label
                         className={`cursor-pointer border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-2 transition text-center ${
                           isDraggingVideo
-                            ? 'border-terracota bg-white shadow-lg'
+                            ? 'border-terracota bg-white shadow-lg pointer-events-none'
                             : 'border-[#E8E0D0] hover:border-terracota bg-white'
                         }`}
                       >
-                        <span className="text-4xl animate-bounce">🎬</span>
-                        <span className="text-sm font-bold text-ink">
+                        <span className="text-4xl pointer-events-none">🎬</span>
+                        <span className="text-sm font-bold text-ink pointer-events-none">
                           Arrastra tu video aquí o haz clic para seleccionarlo
                         </span>
-                        <span className="text-xs text-ink/50">Formatos MP4 o WebM · Procesamiento 100% local</span>
+                        <span className="text-xs text-ink/50 pointer-events-none">Formatos MP4 o WebM · Procesamiento 100% local</span>
                         <input
                           type="file"
                           accept="video/*"
