@@ -33,8 +33,10 @@ export function generarEvaluacionId(estudianteId: string, fecha: string, activid
 export type PasoActividad = {
   paso: number
   texto: string
-  multimedia?: string // data URL o blob url (imagen o video)
+  multimedia?: string // data URL o blob url (imagen o video individual)
   tipoMultimedia?: 'imagen' | 'video'
+  videoStart?: number // segundo inicial del paso si usa video segmentado
+  videoEnd?: number   // segundo final del paso si usa video segmentado
 }
 
 export type Actividad = {
@@ -42,6 +44,8 @@ export type Actividad = {
   nombre: string
   numeroPasos: number
   pasos: PasoActividad[]
+  videoPrincipal?: string // data URL o blob url del video completo segmentado
+  tipoActividad?: 'pasos' | 'video_segmentado'
   fechaCreacion: string
 }
 

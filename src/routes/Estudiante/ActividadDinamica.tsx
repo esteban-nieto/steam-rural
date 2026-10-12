@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
 import type { Actividad } from '../../services/db'
@@ -12,10 +12,29 @@ export function ActividadDinamica({ actividad, onBack }: Props) {
   const [paso, setPaso] = useState(0)
   const [emocionFin, setEmocionFin] = useState<string>()
   const [completados, setCompletados] = useState<Set<number>>(new Set())
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   const pasos = actividad.pasos || []
   const total = actividad.numeroPasos || pasos.length || 1
   const pasoActual = pasos[paso]
+  const esVideoSegmentado = actividad.tipoActividad === 'video_segmentado' && !!actividad.videoPrincipal
+
+  useEffect(() => {
+    if (!esVideoSegmentado || !videoRef.current || !pasoActual) return
+    const v = videoRef.current
+    const inicio = pasoActual.videoStart ?? 0
+    v.currentTime = inicio
+    v.play().catch(() => {})
+  }, [paso, esVideoSegmentado])
+
+  const handleTimeUpdate = () => {
+    if (!esVideoSegmentado || !videoRef.current || !pasoActual) return
+    const v = videoRef.current
+    const fin = pasoActual.videoEnd
+    if (fin !== undefined && v.currentTime >= fin) {
+      v.pause()
+    }
+  }
 
   const marcarSiguiente = () => {
     const n = new Set(completados)
@@ -51,7 +70,15 @@ export function ActividadDinamica({ actividad, onBack }: Props) {
         <div className="p-5">
           {/* Multimedia */}
           <div className="aspect-[4/3] bg-gradient-to-br from-mist/50 to-white rounded-2xl border border-[#E8E0D0] flex items-center justify-center overflow-hidden relative">
-            {pasoActual?.multimedia ? (
+            {esVideoSegmentado ? (
+              <video
+                ref={videoRef}
+                src={actividad.videoPrincipal}
+                controls
+                onTimeUpdate={handleTimeUpdate}
+                className="w-full h-full object-contain p-2"
+              />
+            ) : pasoActual?.multimedia ? (
               pasoActual.tipoMultimedia === 'video' ? (
                 <video
                   src={pasoActual.multimedia}

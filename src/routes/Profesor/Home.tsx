@@ -215,6 +215,85 @@ export function ProfesorHome() {
     setTimeout(() => setMensaje(''), 2500)
   }
 
+  const [modalVideoOpen, setModalVideoOpen] = useState(false)
+  const [nombreActVideo, setNombreActVideo] = useState('')
+  const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null)
+  const [videoDuracion, setVideoDuracion] = useState<number>(0)
+  const [numPasosVideo, setNumPasosVideo] = useState<number>(4)
+  const [segmentosVideo, setSegmentosVideo] = useState<
+    Array<{ paso: number; texto: string; start: number; end: number }>
+  >([
+    { paso: 1, texto: '', start: 0, end: 10 },
+    { paso: 2, texto: '', start: 10, end: 20 },
+    { paso: 3, texto: '', start: 20, end: 30 },
+    { paso: 4, texto: '', start: 30, end: 40 },
+  ])
+  const previewVideoRef = React.useRef<HTMLVideoElement>(null)
+
+  const handleSubirVideoPrincipal = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const res = e.target?.result as string
+      setVideoFileUrl(res)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const cambiarCantidadPasosVideo = (cant: number) => {
+    const n = Math.max(1, Math.min(30, cant))
+    setNumPasosVideo(n)
+    setSegmentosVideo((prev) => {
+      const durPorPaso = videoDuracion > 0 ? Math.floor(videoDuracion / n) : 10
+      const nuevoArray = []
+      for (let i = 1; i <= n; i++) {
+        const existente = prev.find((p) => p.paso === i)
+        if (existente) {
+          nuevoArray.push(existente)
+        } else {
+          const start = (i - 1) * durPorPaso
+          const end = i === n && videoDuracion > 0 ? Math.floor(videoDuracion) : i * durPorPaso
+          nuevoArray.push({ paso: i, texto: '', start, end })
+        }
+      }
+      return nuevoArray
+    })
+  }
+
+  const guardarActividadVideoSegmentado = async () => {
+    if (!nombreActVideo.trim()) {
+      alert('Por favor escribe un nombre para la actividad.')
+      return
+    }
+    if (!videoFileUrl) {
+      alert('Por favor sube el archivo de video.')
+      return
+    }
+
+    const nueva: Actividad = {
+      id: `act-video-${Date.now()}`,
+      nombre: nombreActVideo.trim(),
+      numeroPasos: numPasosVideo,
+      tipoActividad: 'video_segmentado',
+      videoPrincipal: videoFileUrl,
+      pasos: segmentosVideo.map((s) => ({
+        paso: s.paso,
+        texto: s.texto.trim() || `Paso ${s.paso}`,
+        videoStart: s.start,
+        videoEnd: s.end,
+        tipoMultimedia: 'video',
+      })),
+      fechaCreacion: new Date().toISOString(),
+    }
+
+    await guardarActividadLocal(nueva)
+    await cargarActividadesLocales()
+    setModalVideoOpen(false)
+    setNombreActVideo('')
+    setVideoFileUrl(null)
+    setMensaje('✓ Actividad de video por pasos creada correctamente')
+    setTimeout(() => setMensaje(''), 2500)
+  }
+
   const eliminarActividad = async (id: string) => {
     if (confirm('¿Seguro que deseas eliminar esta actividad?')) {
       await eliminarActividadLocal(id)
@@ -826,7 +905,17 @@ export function ProfesorHome() {
           <span className="font-display font-bold text-ink">{curso}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setModalVideoOpen(true)}
+            className="flex items-center gap-1.5 bg-terracota text-white hover:bg-[#a65e2a] px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
+            title="Sube un video completo y divídelo en pasos definiendo segundo de inicio y fin"
+          >
+            <span>🎬</span>
+            <span>Partir video en pasos</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setModalActividadOpen(true)}
@@ -844,7 +933,7 @@ export function ProfesorHome() {
             title="Descarga un documento único con todas las rúbricas PRE y POST registradas para este curso"
           >
             <span>📥</span>
-            <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas del Grupo'}</span>
+            <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas'}</span>
           </button>
         </div>
       </div>
@@ -1560,6 +1649,265 @@ export function ProfesorHome() {
                 className="px-6 py-2.5 rounded-full bg-paramo text-white text-xs font-bold hover:bg-[#1e3a0f] transition shadow-paper"
               >
                 ✓ Guardar Actividad
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARTIR VIDEO EN PASOS */}
+      {modalVideoOpen && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
+            {/* Header */}
+            <div className="bg-terracota text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                  <span>🎬</span>
+                  <span>Partir Video en Pasos</span>
+                </h3>
+                <p className="text-white/80 text-xs">
+                  Sube tu video, define los pasos y el segundo exacto de inicio y fin de cada uno
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalVideoOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
+                  Nombre de la Actividad *
+                </label>
+                <input
+                  type="text"
+                  value={nombreActVideo}
+                  onChange={(e) => setNombreActVideo(e.target.value)}
+                  placeholder="Ej. Armado del Molino de Viento con Motor"
+                  className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-terracota focus:bg-white"
+                />
+              </div>
+
+              {/* Subida y Previsualización del Video */}
+              <div className="p-4 rounded-2xl bg-paper/60 border border-[#E8E0D0]">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-2">
+                  Archivo de Video *
+                </label>
+                {!videoFileUrl ? (
+                  <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota bg-white rounded-2xl p-6 flex flex-col items-center justify-center gap-2 transition text-center">
+                    <span className="text-3xl">📁</span>
+                    <span className="text-sm font-bold text-ink">Haz clic para subir el video (MP4 / WebM)</span>
+                    <span className="text-xs text-ink/50">El video se procesará de forma 100% local en tu dispositivo</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) handleSubirVideoPrincipal(f)
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="aspect-video bg-black rounded-xl overflow-hidden max-h-60 mx-auto">
+                      <video
+                        ref={previewVideoRef}
+                        src={videoFileUrl}
+                        controls
+                        onLoadedMetadata={(e) => {
+                          const dur = (e.currentTarget as HTMLVideoElement).duration || 0
+                          setVideoDuracion(dur)
+                          cambiarCantidadPasosVideo(numPasosVideo)
+                        }}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-ink/60">
+                      <span>
+                        ⏱️ Duración detectada:{' '}
+                        <strong>
+                          {Math.floor(videoDuracion / 60)}m {Math.floor(videoDuracion % 60)}s ({Math.round(videoDuracion)} segs)
+                        </strong>
+                      </span>
+                      <label className="cursor-pointer text-terracota font-bold hover:underline">
+                        Cambiar video
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) handleSubirVideoPrincipal(f)
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Selector de número de pasos */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                    Número de Pasos en que se dividirá el video
+                  </label>
+                  <span className="text-xs font-bold text-terracota bg-mist px-2.5 py-0.5 rounded-full">
+                    {numPasosVideo} pasos
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={25}
+                    value={numPasosVideo}
+                    onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
+                    className="flex-1 accent-terracota"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={25}
+                    value={numPasosVideo}
+                    onChange={(e) => cambiarCantidadPasosVideo(Number(e.target.value))}
+                    className="w-16 text-center bg-paper border border-[#E8E0D0] rounded-lg py-1.5 text-sm font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Configuración de segmentos por paso */}
+              <div className="space-y-4 pt-1">
+                <h4 className="font-display font-bold text-ink text-sm flex items-center justify-between">
+                  <span>⏱️ Intervalos de tiempo por cada paso</span>
+                  <span className="text-xs font-normal text-ink/50">
+                    Usa el botón "Probar tramo" para escuchar y ver el corte exacto
+                  </span>
+                </h4>
+
+                {segmentosVideo.map((seg) => (
+                  <div
+                    key={seg.paso}
+                    className="p-4 rounded-2xl bg-paper/50 border border-[#E8E0D0] space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold bg-terracota text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        Paso {seg.paso}
+                      </span>
+                      {videoFileUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (previewVideoRef.current) {
+                              previewVideoRef.current.currentTime = seg.start
+                              previewVideoRef.current.play()
+                              const checkEnd = () => {
+                                if (previewVideoRef.current && previewVideoRef.current.currentTime >= seg.end) {
+                                  previewVideoRef.current.pause()
+                                  previewVideoRef.current.removeEventListener('timeupdate', checkEnd)
+                                }
+                              }
+                              previewVideoRef.current.addEventListener('timeupdate', checkEnd)
+                            }
+                          }}
+                          className="text-xs font-bold text-terracota hover:underline flex items-center gap-1"
+                        >
+                          ▶ Probar tramo ({seg.start}s a {seg.end}s)
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                        Instrucción o subtítulo del paso
+                      </label>
+                      <input
+                        type="text"
+                        value={seg.texto}
+                        onChange={(e) =>
+                          setSegmentosVideo((prev) =>
+                            prev.map((s) => (s.paso === seg.paso ? { ...s, texto: e.target.value } : s))
+                          )
+                        }
+                        placeholder={`Ej. Medir y recortar la base de cartón`}
+                        className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs outline-none focus:border-terracota"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                          Segundo de Inicio (start)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={seg.start}
+                            onChange={(e) =>
+                              setSegmentosVideo((prev) =>
+                                prev.map((s) =>
+                                  s.paso === seg.paso ? { ...s, start: Math.max(0, Number(e.target.value)) } : s
+                                )
+                              )
+                            }
+                            className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                          />
+                          <span className="text-xs text-ink/50 font-bold">seg</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
+                          Segundo de Fin (end)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={seg.end}
+                            onChange={(e) =>
+                              setSegmentosVideo((prev) =>
+                                prev.map((s) =>
+                                  s.paso === seg.paso ? { ...s, end: Math.max(0, Number(e.target.value)) } : s
+                                )
+                              )
+                            }
+                            className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                          />
+                          <span className="text-xs text-ink/50 font-bold">seg</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer de acción */}
+            <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setModalVideoOpen(false)}
+                className="px-5 py-2.5 rounded-full border border-[#E8E0D0] text-xs font-bold text-ink/70 hover:bg-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={guardarActividadVideoSegmentado}
+                className="px-6 py-2.5 rounded-full bg-terracota text-white text-xs font-bold hover:bg-[#a65e2a] transition shadow-paper"
+              >
+                ✓ Guardar Video en Pasos
               </button>
             </div>
           </div>
