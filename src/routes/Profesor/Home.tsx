@@ -220,6 +220,7 @@ export function ProfesorHome() {
   const [nombreActVideo, setNombreActVideo] = useState('')
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null)
   const [videoDuracion, setVideoDuracion] = useState<number>(0)
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false)
   const [numPasosVideo, setNumPasosVideo] = useState<number>(4)
   const [segmentosVideo, setSegmentosVideo] = useState<
     Array<{ paso: number; texto: string; start: number; end: number }>
@@ -230,8 +231,32 @@ export function ProfesorHome() {
     { paso: 4, texto: '', start: 30, end: 40 },
   ])
   const previewVideoRef = React.useRef<HTMLVideoElement>(null)
+  const modalScrollContainerRef = React.useRef<HTMLDivElement>(null)
+
+  const secondsToMmSs = (secTotal: number): string => {
+    const s = Math.max(0, Math.round(secTotal || 0))
+    const m = Math.floor(s / 60)
+    const rem = s % 60
+    return `${String(m).padStart(2, '0')}:${String(rem).padStart(2, '0')}`
+  }
+
+  const parseMmSsToSeconds = (val: string): number => {
+    const clean = val.trim()
+    if (!clean) return 0
+    if (clean.includes(':')) {
+      const parts = clean.split(':')
+      const m = parseInt(parts[0], 10) || 0
+      const s = parseInt(parts[1], 10) || 0
+      return m * 60 + s
+    }
+    return Math.max(0, parseInt(clean, 10) || 0)
+  }
 
   const handleSubirVideoPrincipal = (file: File) => {
+    if (!file || !file.type.startsWith('video/')) {
+      alert('Por favor selecciona un archivo de video válido (MP4, WebM, etc.).')
+      return
+    }
     const reader = new FileReader()
     reader.onload = (e) => {
       const res = e.target?.result as string
@@ -1741,7 +1766,7 @@ export function ProfesorHome() {
             {/* VISTA 3: DIVIDIR VIDEO EN PASOS */}
             {modoCreacionActividad === 'video' && (
               <>
-                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                <div ref={modalScrollContainerRef} className="p-6 overflow-y-auto space-y-6 flex-1 scroll-smooth">
                   <div className="flex items-center justify-between pb-2 border-b border-[#E8E0D0]">
                     <button
                       type="button"
@@ -1768,16 +1793,47 @@ export function ProfesorHome() {
                     />
                   </div>
 
-                  {/* Subida y Previsualización del Video */}
-                  <div className="p-4 rounded-2xl bg-paper/60 border border-[#E8E0D0]">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-2">
-                      Archivo de Video *
-                    </label>
+                  {/* Subida y Previsualización del Video con Drag & Drop */}
+                  <div
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isDraggingVideo
+                        ? 'border-terracota bg-terracota/10 scale-[1.01]'
+                        : 'bg-paper/60 border-[#E8E0D0]'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsDraggingVideo(true)
+                    }}
+                    onDragLeave={() => setIsDraggingVideo(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsDraggingVideo(false)
+                      const file = e.dataTransfer.files?.[0]
+                      if (file) handleSubirVideoPrincipal(file)
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                        Archivo de Video *
+                      </label>
+                      <span className="text-[11px] font-semibold text-terracota">
+                        Puedes arrastrar y soltar el archivo aquí
+                      </span>
+                    </div>
+
                     {!videoFileUrl ? (
-                      <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota bg-white rounded-2xl p-6 flex flex-col items-center justify-center gap-2 transition text-center">
-                        <span className="text-3xl">📁</span>
-                        <span className="text-sm font-bold text-ink">Haz clic para subir el video (MP4 / WebM)</span>
-                        <span className="text-xs text-ink/50">El video se procesará de forma 100% local en tu dispositivo</span>
+                      <label
+                        className={`cursor-pointer border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-2 transition text-center ${
+                          isDraggingVideo
+                            ? 'border-terracota bg-white shadow-lg'
+                            : 'border-[#E8E0D0] hover:border-terracota bg-white'
+                        }`}
+                      >
+                        <span className="text-4xl animate-bounce">🎬</span>
+                        <span className="text-sm font-bold text-ink">
+                          Arrastra tu video aquí o haz clic para seleccionarlo
+                        </span>
+                        <span className="text-xs text-ink/50">Formatos MP4 o WebM · Procesamiento 100% local</span>
                         <input
                           type="file"
                           accept="video/*"
@@ -1790,7 +1846,7 @@ export function ProfesorHome() {
                       </label>
                     ) : (
                       <div className="space-y-3">
-                        <div className="aspect-video bg-black rounded-xl overflow-hidden max-h-60 mx-auto">
+                        <div className="aspect-video bg-black rounded-xl overflow-hidden max-h-64 mx-auto relative shadow-inner">
                           <video
                             ref={previewVideoRef}
                             src={videoFileUrl}
@@ -1803,15 +1859,17 @@ export function ProfesorHome() {
                             className="w-full h-full object-contain"
                           />
                         </div>
-                        <div className="flex items-center justify-between text-xs text-ink/60">
-                          <span>
-                            ⏱️ Duración detectada:{' '}
-                            <strong>
-                              {Math.floor(videoDuracion / 60)}m {Math.floor(videoDuracion % 60)}s ({Math.round(videoDuracion)} segs)
+                        <div className="flex items-center justify-between text-xs text-ink/60 bg-white p-2.5 rounded-xl border border-[#E8E0D0]">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <span>⏱️ Duración total:</span>
+                            <strong className="text-ink font-bold font-mono">
+                              {secondsToMmSs(videoDuracion)}
                             </strong>
+                            <span className="text-ink/40">({Math.round(videoDuracion)} segundos)</span>
                           </span>
-                          <label className="cursor-pointer text-terracota font-bold hover:underline">
-                            Cambiar video
+                          <label className="cursor-pointer text-terracota font-bold hover:underline flex items-center gap-1">
+                            <span>🔄</span>
+                            <span>Cambiar video</span>
                             <input
                               type="file"
                               accept="video/*"
@@ -1857,14 +1915,16 @@ export function ProfesorHome() {
                     </div>
                   </div>
 
-                  {/* Intervalos por paso */}
+                  {/* Intervalos por paso en formato MM:SS */}
                   <div className="space-y-4 pt-1">
-                    <h4 className="font-display font-bold text-ink text-sm flex items-center justify-between">
-                      <span>⏱️ Intervalos de tiempo por cada paso</span>
-                      <span className="text-xs font-normal text-ink/50">
-                        Usa el botón "Probar tramo" para calibrar
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-display font-bold text-ink text-sm">
+                        ⏱️ Intervalos de tiempo por paso (MM:SS)
+                      </h4>
+                      <span className="text-xs text-ink/50">
+                        Formato Minutos:Segundos (ej. 01:30)
                       </span>
-                    </h4>
+                    </div>
 
                     {segmentosVideo.map((seg) => (
                       <div
@@ -1879,11 +1939,18 @@ export function ProfesorHome() {
                             <button
                               type="button"
                               onClick={() => {
+                                // Auto-scroll al reproductor de video arriba
+                                if (modalScrollContainerRef.current) {
+                                  modalScrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+                                }
                                 if (previewVideoRef.current) {
                                   previewVideoRef.current.currentTime = seg.start
                                   previewVideoRef.current.play()
                                   const checkEnd = () => {
-                                    if (previewVideoRef.current && previewVideoRef.current.currentTime >= seg.end) {
+                                    if (
+                                      previewVideoRef.current &&
+                                      previewVideoRef.current.currentTime >= seg.end
+                                    ) {
                                       previewVideoRef.current.pause()
                                       previewVideoRef.current.removeEventListener('timeupdate', checkEnd)
                                     }
@@ -1891,9 +1958,12 @@ export function ProfesorHome() {
                                   previewVideoRef.current.addEventListener('timeupdate', checkEnd)
                                 }
                               }}
-                              className="text-xs font-bold text-terracota hover:underline flex items-center gap-1"
+                              className="text-xs font-bold bg-white text-terracota border border-terracota/30 hover:bg-terracota hover:text-white px-3 py-1 rounded-full transition flex items-center gap-1.5 shadow-sm"
                             >
-                              ▶ Probar tramo ({seg.start}s a {seg.end}s)
+                              <span>▶</span>
+                              <span>
+                                Probar tramo ({secondsToMmSs(seg.start)} a {secondsToMmSs(seg.end)})
+                              </span>
                             </button>
                           )}
                         </div>
@@ -1918,47 +1988,47 @@ export function ProfesorHome() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                              Segundo de Inicio (start)
+                              Inicio (MM:SS)
                             </label>
                             <div className="flex items-center gap-1.5">
                               <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={seg.start}
-                                onChange={(e) =>
+                                type="text"
+                                pattern="[0-9]{1,2}:[0-9]{2}"
+                                value={secondsToMmSs(seg.start)}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  const sec = parseMmSsToSeconds(val)
                                   setSegmentosVideo((prev) =>
-                                    prev.map((s) =>
-                                      s.paso === seg.paso ? { ...s, start: Math.max(0, Number(e.target.value)) } : s
-                                    )
+                                    prev.map((s) => (s.paso === seg.paso ? { ...s, start: sec } : s))
                                   )
-                                }
-                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                                }}
+                                placeholder="00:00"
+                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none focus:border-terracota text-center"
                               />
-                              <span className="text-xs text-ink/50 font-bold">seg</span>
+                              <span className="text-[11px] text-ink/40 font-mono">({seg.start}s)</span>
                             </div>
                           </div>
 
                           <div>
                             <label className="block text-[11px] font-bold text-ink/60 uppercase mb-1">
-                              Segundo de Fin (end)
+                              Fin (MM:SS)
                             </label>
                             <div className="flex items-center gap-1.5">
                               <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={seg.end}
-                                onChange={(e) =>
+                                type="text"
+                                pattern="[0-9]{1,2}:[0-9]{2}"
+                                value={secondsToMmSs(seg.end)}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  const sec = parseMmSsToSeconds(val)
                                   setSegmentosVideo((prev) =>
-                                    prev.map((s) =>
-                                      s.paso === seg.paso ? { ...s, end: Math.max(0, Number(e.target.value)) } : s
-                                    )
+                                    prev.map((s) => (s.paso === seg.paso ? { ...s, end: sec } : s))
                                   )
-                                }
-                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-terracota"
+                                }}
+                                placeholder="00:00"
+                                className="w-full bg-white border border-[#E8E0D0] rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none focus:border-terracota text-center"
                               />
-                              <span className="text-xs text-ink/50 font-bold">seg</span>
+                              <span className="text-[11px] text-ink/40 font-mono">({seg.end}s)</span>
                             </div>
                           </div>
                         </div>
