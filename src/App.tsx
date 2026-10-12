@@ -31,9 +31,15 @@ export default function App() {
   useEffect(() => {
     initSyncListener()
     const onPop = (e: PopStateEvent) => {
-      const v = (e.state?.view || location.hash.replace('#','') || 'selector') as View
-      if (['selector','login','registro','profesor','estudiante','origami','molino','historia'].includes(v)) setView(v)
-      else setView('selector')
+      const h = location.hash.replace('#', '')
+      const v = (e.state?.view || h || 'selector') as View
+      if (['selector','login','registro','profesor','estudiante','origami','molino','historia','actividad_dinamica'].includes(v)) {
+        setView(v)
+      } else if (h === 'ficha' || h === 'rubrica') {
+        // Sub-vistas modales dentro de profesor: no alterar view principal
+      } else {
+        setView('selector')
+      }
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)

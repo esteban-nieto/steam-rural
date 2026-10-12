@@ -46,6 +46,7 @@ export function EstudianteHome({
             badge="Personalizada"
             meta={`${act.numeroPasos} pasos · Práctica`}
             image={
+              act.portada ||
               act.pasos.find((p) => p.multimedia && p.tipoMultimedia !== 'video')?.multimedia ||
               `${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`
             }
