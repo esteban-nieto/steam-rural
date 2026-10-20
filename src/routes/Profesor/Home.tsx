@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { Estudiante } from '../../types/models'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
+import { ModalP2PSync } from '../../components/ModalP2PSync'
 import { useAppStore } from '../../stores/app.store'
 import {
   db,
@@ -81,6 +82,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   const [diaDetalle, setDiaDetalle] = useState<{ fecha: string; items: any[] } | null>(null)
   const [diaRubrica, setDiaRubrica] = useState<any | null>(null)
   const [tipoRubrica, setTipoRubrica] = useState<'pre' | 'post'>('pre')
+  const [modalP2pOpen, setModalP2pOpen] = useState(false)
   const criteriosInicialRef = React.useRef(true)
 
   const cargar = async () => {
@@ -880,6 +882,16 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
           >
             <span>📥</span>
             <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setModalP2pOpen(true)}
+            className="flex items-center gap-1.5 bg-white border border-terracota/30 text-terracota hover:bg-terracota hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
+            title="Sincronizar cursos, notas y actividades con otro equipo de la sala por red WiFi o USB"
+          >
+            <span>📡</span>
+            <span>Sincronizar Sala</span>
           </button>
 
           {onCerrarSesion && (
@@ -2096,6 +2108,16 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
           </div>
         </div>
       )}
+
+      {/* Modal de sincronización P2P en el aula */}
+      <ModalP2PSync
+        isOpen={modalP2pOpen}
+        onClose={() => setModalP2pOpen(false)}
+        onSyncCompletado={() => {
+          cargar()
+          cargarActividadesLocales()
+        }}
+      />
     </Layout>
   )
 }
