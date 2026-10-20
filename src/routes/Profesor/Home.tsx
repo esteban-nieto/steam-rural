@@ -1,10 +1,10 @@
 // @ts-nocheck
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../services/supabase'
-import type { Estudiante } from '../../services/supabase'
+import type { Estudiante } from '../../types/models'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
+import { useAppStore } from '../../stores/app.store'
 import {
   db,
   guardarProgresoLocal,
@@ -59,7 +59,7 @@ const RUBRICA = [
   ]},
 ]
 
-export function ProfesorHome() {
+export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }) {
   const [curso, setCurso] = useState('3A')
   const [cursos, setCursos] = useState<string[]>(['3A', '4B'])
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
@@ -85,19 +85,11 @@ export function ProfesorHome() {
 
   const cargar = async () => {
     try {
-      if (navigator.onLine) {
-        const { data, error } = await (supabase.from as any)('estudiantes').select('*').eq('curso', curso)
-        if (!error && data) {
-          setEstudiantes(data as Estudiante[])
-          for (const e of data as Estudiante[]) await db.estudiantes.put(e as any).catch(() => {})
-          return
-        }
-      }
-    } catch {}
-    try {
       const local = await db.estudiantes.where('curso').equals(curso).toArray()
       setEstudiantes(local as any)
-    } catch { setEstudiantes([]) }
+    } catch {
+      setEstudiantes([])
+    }
   }
 
   useEffect(() => { cargar() }, [curso])
@@ -118,23 +110,18 @@ export function ProfesorHome() {
   const agregar = async () => {
     if (!nombre.trim()) return
     const tempId = crypto.randomUUID()
-    let profesorId: string | null = null
-    try { const { data: { user } } = await (supabase.auth as any).getUser(); profesorId = user?.id || null } catch {}
-    if (!profesorId) { try { const raw = localStorage.getItem('sb-phutywmnrwradaxzczwl-auth-token'); if (raw) profesorId = JSON.parse(raw)?.user?.id || null } catch {} }
-    const nuevo: any = { id: tempId, nombre: nombre.trim(), curso, profesor_id: profesorId, created_at: new Date().toISOString() }
+    const nuevo: any = {
+      id: tempId,
+      nombre: nombre.trim(),
+      curso,
+      created_at: new Date().toISOString(),
+    }
     setEstudiantes((p) => [...p, nuevo as Estudiante])
     setNombre('')
-    try { await db.estudiantes.put(nuevo); await db.estudiantesPendientes.put(nuevo) } catch {}
-    if (navigator.onLine && profesorId) {
-      try {
-        const { data, error } = await (supabase.from as any)('estudiantes').insert({ nombre: nuevo.nombre, curso: nuevo.curso, profesor_id: profesorId }).select().single()
-        if (!error && data) {
-          setEstudiantes((prev) => prev.map((e) => (e.id === tempId ? (data as Estudiante) : e)))
-          await db.estudiantes.put(data as any).catch(() => {})
-          await db.estudiantes.delete(tempId).catch(() => {})
-          await db.estudiantesPendientes.delete(tempId).catch(() => {})
-        }
-      } catch {}
+    try {
+      await db.estudiantes.put(nuevo)
+    } catch (err) {
+      console.error('Error guardando estudiante local:', err)
     }
   }
 
@@ -353,43 +340,18 @@ export function ProfesorHome() {
     const fechaDia = new Date().toISOString().split('T')[0]
     const actId = tipo === 'post' ? 'molino-casa-post' : 'molino-casa'
     const evId = generarEvaluacionId(seleccionado.id, fechaDia, actId)
-    const evForSupabase: any = {
+    const evLocal: any = {
       id: evId,
       estudiante_id: seleccionado.id,
       actividad_id: actId,
       fecha: fechaDia,
       criterios: crit,
       observacion: JSON.stringify(obs),
+      observaciones: obs,
       created_at: new Date().toISOString(),
     }
-    const evLocal: any = { ...evForSupabase, observaciones: obs }
     await db.evaluaciones.put(evLocal).catch(() => {})
-    await db.evaluacionesPendientes.put(evLocal).catch(() => {})
-
-    if (navigator.onLine) {
-      try {
-        const { error } = await (supabase.from as any)('evaluaciones').upsert({
-          id: evForSupabase.id,
-          estudiante_id: evForSupabase.estudiante_id,
-          actividad_id: evForSupabase.actividad_id,
-          fecha: evForSupabase.fecha,
-          criterios: evForSupabase.criterios,
-          observacion: evForSupabase.observacion,
-        })
-        if (!error) {
-          await db.evaluacionesPendientes.delete(evId).catch(() => {})
-          setMensajeRubrica('✓ Rúbrica guardada en la nube')
-        } else {
-          console.error('Error guardando en Supabase:', error)
-          setMensajeRubrica('✓ Guardado local (pendiente sincronizar)')
-        }
-      } catch (err) {
-        console.error('Excepción guardando en Supabase:', err)
-        setMensajeRubrica('✓ Guardado local (pendiente sincronizar)')
-      }
-    } else {
-      setMensajeRubrica('✓ Guardado local (sin conexión)')
-    }
+    setMensajeRubrica('✓ Rúbrica guardada localmente')
 
     setHistorialEval((p) => {
       const filtrado = p.filter((x: any) => x.id !== evId)
@@ -421,22 +383,6 @@ export function ProfesorHome() {
       try {
         const localAll = await db.evaluaciones.where('estudiante_id').equals(seleccionado.id).toArray()
         found = localAll.filter((e: any) => e.actividad_id === actId).pop()
-      } catch {}
-    }
-
-    if (!found && navigator.onLine) {
-      try {
-        const { data } = await (supabase.from as any)('evaluaciones')
-          .select('*')
-          .eq('estudiante_id', seleccionado.id)
-          .eq('actividad_id', actId)
-          .order('fecha', { ascending: false })
-          .limit(1)
-          .single()
-        if (data) {
-          found = data
-          await db.evaluaciones.put(data).catch(() => {})
-        }
       } catch {}
     }
 
@@ -591,27 +537,11 @@ export function ProfesorHome() {
     setDescargandoGrupo(true)
     try {
       const estudianteIds = estudiantes.map((e) => e.id)
-      let evalsRemotas: any[] = []
-      if (navigator.onLine) {
-        try {
-          const { data } = await (supabase.from as any)('evaluaciones')
-            .select('*')
-            .in('estudiante_id', estudianteIds)
-            .order('fecha', { ascending: false })
-          if (data) evalsRemotas = data
-        } catch {}
-      }
-
-      const evalsLocales = await db.evaluaciones
+      const todasEvals = await db.evaluaciones
         .where('estudiante_id')
         .anyOf(estudianteIds)
         .toArray()
         .catch(() => [])
-
-      const evalsMap = new Map<string, any>()
-      evalsLocales.forEach((ev: any) => evalsMap.set(ev.id, ev))
-      evalsRemotas.forEach((ev: any) => evalsMap.set(ev.id, ev))
-      const todasEvals = Array.from(evalsMap.values())
 
       const paginasHtml: string[] = []
       let totalRubricasEncontradas = 0
@@ -799,52 +729,40 @@ export function ProfesorHome() {
 
   const cargarHistorial = async (estudianteId: string) => {
     try {
-      const { data } = await (supabase.from as any)('progresos').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
-      if (data && data.length > 0) setHistorial(data)
-      else {
-        const localAll = await db.progresos.where('estudiante_id').equals(estudianteId).toArray()
-        setHistorial([...localAll].reverse())
-      }
-    } catch {
-      const localAll = await db.progresos.where('estudiante_id').equals(estudianteId).toArray().catch(() => [])
+      const localAll = await db.progresos.where('estudiante_id').equals(estudianteId).toArray()
       setHistorial([...localAll].reverse())
+    } catch {
+      setHistorial([])
     }
     try {
-      const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray().catch(() => [])
-      let combined = [...localE]
-      if (navigator.onLine) {
-        const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', estudianteId).order('fecha', { ascending: false })
-        if (data && data.length > 0) {
-          const map = new Map<string, any>()
-          localE.forEach((e: any) => map.set(e.id, e))
-          data.forEach((e: any) => map.set(e.id, e))
-          combined = Array.from(map.values())
-          for (const ev of data) await db.evaluaciones.put(ev).catch(() => {})
-        }
-      }
-      setHistorialEval(combined.reverse())
+      const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray()
+      setHistorialEval([...localE].reverse())
     } catch {
-      try { const localE = await db.evaluaciones.where('estudiante_id').equals(estudianteId).toArray(); setHistorialEval([...localE].reverse()) } catch { setHistorialEval([]) }
+      setHistorialEval([])
     }
   }
 
   const abrirEstudiante = async (e: Estudiante) => {
-    setSeleccionado(e); setEmocionInicio(undefined); setEmocionFin(undefined); setPasoHasta(0); setCriterios({}); setObservaciones({}); setMensaje(''); setHistorial([]); setHistorialEval([]); setActividad('origami-conejo')
+    setSeleccionado(e)
+    setEmocionInicio(undefined)
+    setEmocionFin(undefined)
+    setPasoHasta(0)
+    setCriterios({})
+    setObservaciones({})
+    setMensaje('')
+    setHistorial([])
+    setHistorialEval([])
+    setActividad('origami-conejo')
     pushState('ficha')
+
     try {
-      const { data } = await (supabase.from as any)('progresos').select('*').eq('estudiante_id', e.id).order('fecha', { ascending: false }).limit(1).single()
-      if (data) {
-        setEmocionInicio(data.emocion_inicio || undefined); setEmocionFin(data.emocion_fin || undefined)
-        setPasoHasta(data.pasos_completados?.length || 0)
-        setActividad(data.actividad_id || 'origami-conejo')
-      } else {
-        const local = await db.progresos.where('estudiante_id').equals(e.id).toArray()
-        if (local.length > 0) {
-          const ultimo = local[local.length - 1] as any
-          setEmocionInicio(ultimo.emocion_inicio || undefined); setEmocionFin(ultimo.emocion_fin || undefined)
-          setPasoHasta(ultimo.pasos_completados?.length || 0)
-          setActividad(ultimo.actividad_id || 'origami-conejo')
-        }
+      const local = await db.progresos.where('estudiante_id').equals(e.id).toArray()
+      if (local.length > 0) {
+        const ultimo = local[local.length - 1] as any
+        setEmocionInicio(ultimo.emocion_inicio || undefined)
+        setEmocionFin(ultimo.emocion_fin || undefined)
+        setPasoHasta(ultimo.pasos_completados?.length || 0)
+        setActividad(ultimo.actividad_id || 'origami-conejo')
       }
     } catch {}
 
@@ -865,46 +783,30 @@ export function ProfesorHome() {
     try {
       await db.open().catch(() => {})
       await guardarProgresoLocal(progreso)
-      if (navigator.onLine) {
-        const { error } = await (supabase.from as any)('progresos').insert(progreso)
-        if (error) throw error
-      }
       if (actividad === 'molino-casa' && (Object.keys(criterios).length > 0 || Object.keys(observaciones).length > 0)) {
         const actIdSave = tipoRubrica === 'post' ? 'molino-casa-post' : 'molino-casa'
         const evIdSave = generarEvaluacionId(seleccionado.id, fechaDia, actIdSave)
-        const evForSupabase: any = {
+        const evLocal: any = {
           id: evIdSave,
           estudiante_id: seleccionado.id,
           actividad_id: actIdSave,
           fecha: fechaDia,
           criterios,
           observacion: JSON.stringify(observaciones),
+          observaciones,
           created_at: new Date().toISOString(),
         }
-        const evLocal: any = { ...evForSupabase, observaciones }
 
         await guardarEvaluacionLocal(evLocal)
-        if (navigator.onLine) {
-          try {
-            const { error } = await (supabase.from as any)('evaluaciones').upsert(evForSupabase)
-            if (!error) {
-              await db.evaluacionesPendientes.delete(evIdSave).catch(() => {})
-            } else {
-              console.error('Error guardando evaluación en Supabase:', error)
-            }
-          } catch (err) {
-            console.error('Excepción guardando evaluación:', err)
-          }
-        }
         setHistorialEval((p) => {
           const filtrado = p.filter((x: any) => x.id !== evIdSave)
           return [evLocal, ...filtrado]
         })
       }
-      setMensaje(navigator.onLine ? '✓ Registro guardado correctamente' : '✓ Guardado local (se sincronizará al conectar)')
+      setMensaje('✓ Registro guardado localmente')
       setHistorial((prev) => [progreso, ...prev])
     } catch {
-      setMensaje('✓ Guardado local (se sincronizará al conectar)')
+      setMensaje('✓ Guardado localmente')
     }
     setGuardando(false)
     setTimeout(() => setMensaje(''), 2500)
@@ -919,22 +821,31 @@ export function ProfesorHome() {
     if (h.actividad_id === 'molino-casa' || h.actividad_id === 'molino-casa-post' || h.criterios) {
       try {
         const fechaKey = (h.fecha || h.created_at).split('T')[0]
-        const { data } = await (supabase.from as any)('evaluaciones').select('*').eq('estudiante_id', h.estudiante_id).eq('fecha', fechaKey).limit(1).single()
-        if (data?.criterios) {
-          setCriterios(data.criterios)
-          try { setObservaciones(data.observaciones ? (typeof data.observaciones === 'string' ? JSON.parse(data.observaciones) : data.observaciones) : data.observacion ? JSON.parse(data.observacion) : {}) } catch { setObservaciones({}) }
+        const localE = await db.evaluaciones.where('estudiante_id').equals(h.estudiante_id).toArray()
+        const found = localE.find((e: any) => e.fecha === fechaKey)
+        if (found) {
+          setCriterios((found as any).criterios || {})
+          const obs = (found as any).observaciones || (found as any).observacion
+          try {
+            setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
+          } catch {
+            setObservaciones({})
+          }
         } else {
-          const localE = await db.evaluaciones.where('estudiante_id').equals(h.estudiante_id).toArray()
-          const found = localE.find((e: any) => e.fecha === fechaKey)
-          if (found) {
-            setCriterios((found as any).criterios || {})
-            const obs = (found as any).observaciones || (found as any).observacion
-            try { setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {}) } catch { setObservaciones({}) }
-          } else setCriterios({})
+          setCriterios({})
+          setObservaciones({})
         }
-      } catch { setCriterios({}); setObservaciones({}) }
-    } else { setCriterios({}); setObservaciones({}) }
-    setTimeout(() => { criteriosInicialRef.current = false }, 300)
+      } catch {
+        setCriterios({})
+        setObservaciones({})
+      }
+    } else {
+      setCriterios({})
+      setObservaciones({})
+    }
+    setTimeout(() => {
+      criteriosInicialRef.current = false
+    }, 300)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -970,6 +881,18 @@ export function ProfesorHome() {
             <span>📥</span>
             <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas'}</span>
           </button>
+
+          {onCerrarSesion && (
+            <button
+              type="button"
+              onClick={onCerrarSesion}
+              className="flex items-center gap-1.5 bg-white border border-[#E8E0D0] text-ink/70 hover:text-ink hover:bg-mist px-3.5 py-2 rounded-full text-[13px] font-semibold transition"
+              title="Salir al selector principal"
+            >
+              <span>🚪</span>
+              <span>Salir</span>
+            </button>
+          )}
         </div>
       </div>
 
