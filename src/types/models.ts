@@ -1,15 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co'
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_ANON_KEY'
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+// Modelo de datos y tipos base del sistema STEAM Rural (100% Local)
 
 export type Profesor = {
   id: string
-  email: string
-  name: string
-  curso: string
+  nombre: string
+  email?: string
+  pin?: string
+  cursoActual?: string
   created_at: string
 }
 
@@ -17,7 +13,7 @@ export type Estudiante = {
   id: string
   nombre: string
   curso: string
-  profesor_id: string
+  profesor_id?: string | null
   created_at: string
 }
 
