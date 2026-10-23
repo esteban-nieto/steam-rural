@@ -1,7 +1,19 @@
 import type { ReactNode } from 'react'
 import { SyncIndicator } from './SyncIndicator'
 
-export function Layout({ children, title, onBack }: { children: ReactNode; title?: string; onBack?: () => void }) {
+export function Layout({
+  children,
+  title,
+  onBack,
+  rightAction,
+  hideSync,
+}: {
+  children: ReactNode
+  title?: string
+  onBack?: () => void
+  rightAction?: ReactNode
+  hideSync?: boolean
+}) {
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-[#E8E0D0]">
@@ -26,7 +38,8 @@ export function Layout({ children, title, onBack }: { children: ReactNode; title
           </div>
           <div className="flex items-center gap-3">
             {title && <span className="font-display font-semibold text-paramo text-sm hidden md:block">{title}</span>}
-            <SyncIndicator />
+            {!hideSync && <SyncIndicator />}
+            {rightAction}
           </div>
         </div>
       </header>

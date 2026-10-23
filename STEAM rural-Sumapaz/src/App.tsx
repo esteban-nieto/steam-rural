@@ -80,18 +80,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  // Cargar perfil docente guardado si existe
-  useEffect(() => {
-    obtenerProfesorActivo().then((p) => {
-      if (p && !usuario?.profesor) {
-        setUsuario({
-          ...usuario,
-          profesor: p,
-        })
-      }
-    })
-  }, [])
-
   if (view === 'selector')
     return (
       <div className="min-h-screen bg-paper paper-texture">
@@ -163,9 +151,32 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="mt-8 flex items-center justify-center gap-2 text-ink/50 text-xs">
-                <span>📍</span>
-                <span>Modo fuera de línea local · Sincronización P2P en el aula</span>
+              {/* Sección de Historia de Pueblo Soleado */}
+              <div className="mt-6">
+                <button
+                  onClick={() => pushView('historia')}
+                  className="group w-full bg-gradient-to-r from-clay to-terracota text-white rounded-paper p-5 text-left shadow-paper hover:shadow-lift transition-all flex items-center justify-between gap-4 border border-white/20"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition">
+                      🎬
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold tracking-[0.14em] uppercase bg-white/20 px-2 py-0.5 rounded-full text-white inline-block mb-1">
+                        Videos Educativos
+                      </span>
+                      <h3 className="font-display font-bold text-[18px] sm:text-[20px] leading-tight text-white">
+                        Historia de Pueblo Soleado
+                      </h3>
+                      <p className="text-[12px] text-white/90">
+                        Aprende sobre energía y comunidad con los videos animados del pueblo
+                      </p>
+                    </div>
+                  </div>
+                  <span className="hidden sm:inline-flex items-center gap-1 font-bold text-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition">
+                    Ver videos ▶
+                  </span>
+                </button>
               </div>
             </div>
           </main>
@@ -203,7 +214,7 @@ export default function App() {
     return (
       <ProfesorHome
         onCerrarSesion={() => {
-          setUsuario({ rol: 'login' })
+          setUsuario({ rol: 'login', profesor: undefined })
           pushView('selector')
         }}
       />

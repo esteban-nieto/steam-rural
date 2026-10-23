@@ -5,6 +5,7 @@ import type { Estudiante } from '../../types/models'
 import { Layout } from '../../components/Layout'
 import { EmotionPicker } from '../../components/EmotionPicker'
 import { ModalP2PSync } from '../../components/ModalP2PSync'
+import { ModalAsistencia } from '../../components/ModalAsistencia'
 import { useAppStore } from '../../stores/app.store'
 import {
   db,
@@ -61,8 +62,16 @@ const RUBRICA = [
 ]
 
 export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }) {
-  const [curso, setCurso] = useState('3A')
-  const [cursos, setCursos] = useState<string[]>(['3A', '4B'])
+  const [curso, setCurso] = useState(() => {
+    return localStorage.getItem('steam_curso_activo') || '3A'
+  })
+  const [cursos, setCursos] = useState<string[]>(() => {
+    try {
+      const guardados = localStorage.getItem('steam_cursos_lista')
+      if (guardados) return JSON.parse(guardados)
+    } catch {}
+    return ['3A', '4B']
+  })
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [nombre, setNombre] = useState('')
   const [nuevoCurso, setNuevoCurso] = useState('')
@@ -83,7 +92,20 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   const [diaRubrica, setDiaRubrica] = useState<any | null>(null)
   const [tipoRubrica, setTipoRubrica] = useState<'pre' | 'post'>('pre')
   const [modalP2pOpen, setModalP2pOpen] = useState(false)
+  const [modalAsistenciaOpen, setModalAsistenciaOpen] = useState(false)
+  const [menuAccionesOpen, setMenuAccionesOpen] = useState(false)
+  const menuRef = React.useRef<HTMLDivElement>(null)
   const criteriosInicialRef = React.useRef(true)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuAccionesOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const cargar = async () => {
     try {
@@ -94,7 +116,14 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     }
   }
 
-  useEffect(() => { cargar() }, [curso])
+  useEffect(() => {
+    localStorage.setItem('steam_curso_activo', curso)
+    cargar()
+  }, [curso])
+
+  useEffect(() => {
+    localStorage.setItem('steam_cursos_lista', JSON.stringify(cursos))
+  }, [cursos])
 
   useEffect(() => {
     const onPop = () => {
@@ -128,8 +157,41 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   }
 
   const crearCurso = () => {
-    if (!nuevoCurso.trim() || cursos.includes(nuevoCurso)) return
-    setCursos([...cursos, nuevoCurso]); setCurso(nuevoCurso); setNuevoCurso('')
+    const c = nuevoCurso.trim()
+    if (!c || cursos.includes(c)) return
+    const nuevos = [...cursos, c]
+    setCursos(nuevos)
+    setCurso(c)
+    setNuevoCurso('')
+  }
+
+  const eliminarCurso = async (cursoAEliminar: string) => {
+    if (cursos.length <= 1) {
+      alert('Debe existir al menos un curso.')
+      return
+    }
+    const confirmar = confirm(
+      `¿Deseas eliminar el curso "${cursoAEliminar}"? Los estudiantes y datos guardados de este curso también podrán eliminarse.`
+    )
+    if (!confirmar) return
+
+    try {
+      const estudiantesCurso = await db.estudiantes.where('curso').equals(cursoAEliminar).toArray()
+      if (estudiantesCurso.length > 0) {
+        const ids = estudiantesCurso.map((e) => e.id)
+        await db.estudiantes.bulkDelete(ids)
+      }
+    } catch (e) {
+      console.error('Error al limpiar estudiantes del curso:', e)
+    }
+
+    const nuevosCursos = cursos.filter((c) => c !== cursoAEliminar)
+    setCursos(nuevosCursos)
+    if (curso === cursoAEliminar) {
+      setCurso(nuevosCursos[0])
+    }
+    setMensaje(`✓ Curso ${cursoAEliminar} eliminado`)
+    setTimeout(() => setMensaje(''), 2500)
   }
 
   const [actividadesLocales, setActividadesLocales] = useState<Actividad[]>([])
@@ -852,69 +914,168 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   }
 
   return (
-    <Layout title="Panel Profesor">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <Layout
+      title="Panel Profesor"
+      hideSync={true}
+      rightAction={
+        onCerrarSesion && (
+          <button
+            type="button"
+            onClick={onCerrarSesion}
+            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm transition hover:scale-105"
+            title="Cerrar sesión del docente y volver al inicio"
+          >
+            <span>🚪</span>
+            <span>Cerrar sesión</span>
+          </button>
+        )
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">{estudiantes.length} estudiantes</span>
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">
+            {estudiantes.length} estudiantes
+          </span>
           <span className="text-[12px] text-ink/50">en</span>
           <span className="font-display font-bold text-ink">{curso}</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Menú Desplegable de Opciones y Herramientas */}
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
-            onClick={() => {
-              setModoCreacionActividad('selector')
-              setModalActividadOpen(true)
-            }}
-            className="flex items-center gap-1.5 bg-paramo text-white hover:bg-[#1e3a0f] px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
+            onClick={() => setMenuAccionesOpen(!menuAccionesOpen)}
+            className="flex items-center gap-2 bg-white border border-[#E8E0D0] hover:border-paramo text-ink font-bold text-[13px] px-4 py-2 rounded-full shadow-paper hover:shadow transition"
+            aria-expanded={menuAccionesOpen}
           >
-            <span>✨</span>
-            <span>+ Nueva Actividad</span>
+            <span>⚙️</span>
+            <span>Opciones del Curso</span>
+            <span className="text-xs text-ink/40">▼</span>
           </button>
 
-          <button
-            type="button"
-            onClick={descargarTodasLasRubricasGrupo}
-            disabled={descargandoGrupo || estudiantes.length === 0}
-            className="flex items-center gap-2 bg-white border-2 border-slateProfesor text-slateProfesor hover:bg-slateProfesor hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition disabled:opacity-50 disabled:pointer-events-none"
-            title="Descarga un documento único con todas las rúbricas PRE y POST registradas para este curso"
-          >
-            <span>📥</span>
-            <span>{descargandoGrupo ? 'Generando reporte...' : 'Descargar Rúbricas'}</span>
-          </button>
+          {menuAccionesOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-[#E8E0D0] rounded-2xl shadow-2xl p-2 z-40 paper-texture animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink/40 border-b border-[#E8E0D0] mb-1">
+                Herramientas del Docente
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setModalP2pOpen(true)}
-            className="flex items-center gap-1.5 bg-white border border-terracota/30 text-terracota hover:bg-terracota hover:text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-paper hover:shadow transition"
-            title="Sincronizar cursos, notas y actividades con otro equipo de la sala por red WiFi o USB"
-          >
-            <span>📡</span>
-            <span>Sincronizar Sala</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAccionesOpen(false)
+                  setModalAsistenciaOpen(true)
+                }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
+              >
+                <span className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
+                  📋
+                </span>
+                <div>
+                  <span className="block leading-tight font-bold">Llamar a Lista</span>
+                  <span className="text-[11px] text-ink/50">Asistencias y exportar a Excel</span>
+                </div>
+              </button>
 
-          {onCerrarSesion && (
-            <button
-              type="button"
-              onClick={onCerrarSesion}
-              className="flex items-center gap-1.5 bg-white border border-[#E8E0D0] text-ink/70 hover:text-ink hover:bg-mist px-3.5 py-2 rounded-full text-[13px] font-semibold transition"
-              title="Salir al selector principal"
-            >
-              <span>🚪</span>
-              <span>Salir</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAccionesOpen(false)
+                  descargarTodasLasRubricasGrupo()
+                }}
+                disabled={descargandoGrupo || estudiantes.length === 0}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink disabled:opacity-40 disabled:pointer-events-none group"
+              >
+                <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
+                  📥
+                </span>
+                <div>
+                  <span className="block leading-tight font-bold">
+                    {descargandoGrupo ? 'Generando...' : 'Descargar Rúbricas'}
+                  </span>
+                  <span className="text-[11px] text-ink/50">Compilado PRE y POST</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAccionesOpen(false)
+                  setModoCreacionActividad('selector')
+                  setModalActividadOpen(true)
+                }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
+              >
+                <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
+                  ✨
+                </span>
+                <div>
+                  <span className="block leading-tight font-bold">Crear Actividad</span>
+                  <span className="text-[11px] text-ink/50">Por pasos o video segmentado</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAccionesOpen(false)
+                  setModalP2pOpen(true)
+                }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
+              >
+                <span className="w-7 h-7 rounded-lg bg-orange-50 text-terracota flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
+                  📡
+                </span>
+                <div>
+                  <span className="block leading-tight font-bold">Sincronizar Sala</span>
+                  <span className="text-[11px] text-ink/50">Enviar/recibir datos P2P o USB</span>
+                </div>
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {cursos.map((c) => (
-          <button key={c} onClick={() => setCurso(c)} aria-pressed={curso === c} aria-label={`Curso ${c}`} className={`px-4 py-2 rounded-full text-[13px] font-bold border transition focus-visible:ring-2 focus-visible:ring-terracota ${curso === c ? 'bg-slateProfesor text-white border-slateProfesor shadow-paper' : 'bg-white text-ink/70 border-[#E8E0D0] hover:border-slateProfesor/30'}`}>{c}</button>
+          <div key={c} className="inline-flex items-center">
+            <button
+              onClick={() => setCurso(c)}
+              aria-pressed={curso === c}
+              aria-label={`Curso ${c}`}
+              className={`px-4 py-2 rounded-full text-[13px] font-bold border transition focus-visible:ring-2 focus-visible:ring-terracota ${
+                curso === c
+                  ? 'bg-slateProfesor text-white border-slateProfesor shadow-paper'
+                  : 'bg-white text-ink/70 border-[#E8E0D0] hover:border-slateProfesor/30'
+              }`}
+            >
+              {c}
+            </button>
+            {cursos.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  eliminarCurso(c)
+                }}
+                className="-ml-3 z-10 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold flex items-center justify-center shadow-sm hover:scale-110 transition"
+                title={`Eliminar curso ${c}`}
+                aria-label={`Eliminar curso ${c}`}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         ))}
         <span className="flex gap-1.5 bg-white border border-[#E8E0D0] rounded-full p-1">
-          <input value={nuevoCurso} onChange={(e) => setNuevoCurso(e.target.value)} placeholder="Nuevo curso" className="bg-transparent px-3 text-[13px] w-28 outline-none placeholder:text-ink/30" />
-          <button onClick={crearCurso} className="bg-ink text-white rounded-full px-3 text-[12px] font-bold">+ Curso</button>
+          <input
+            value={nuevoCurso}
+            onChange={(e) => setNuevoCurso(e.target.value)}
+            placeholder="Nuevo curso"
+            className="bg-transparent px-3 text-[13px] w-28 outline-none placeholder:text-ink/30"
+          />
+          <button onClick={crearCurso} className="bg-ink text-white rounded-full px-3 text-[12px] font-bold">
+            + Curso
+          </button>
         </span>
       </div>
 
@@ -2117,6 +2278,14 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
           cargar()
           cargarActividadesLocales()
         }}
+      />
+
+      {/* Modal de Control de Asistencia y exportación Excel */}
+      <ModalAsistencia
+        isOpen={modalAsistenciaOpen}
+        onClose={() => setModalAsistenciaOpen(false)}
+        curso={curso}
+        estudiantes={estudiantes}
       />
     </Layout>
   )

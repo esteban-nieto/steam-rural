@@ -5,8 +5,8 @@ import { useAppStore } from '../../stores/app.store'
 import type { Profesor } from '../../types/models'
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
+  const [identificador, setIdentificador] = useState('')
   const [pin, setPin] = useState('')
-  const [nombre, setNombre] = useState('')
   const [profesorGuardado, setProfesorGuardado] = useState<Profesor | null>(null)
   const [error, setError] = useState('')
   const setUsuario = useAppStore((s) => s.setUsuario)
@@ -15,7 +15,6 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
     obtenerProfesorActivo().then((p) => {
       if (p) {
         setProfesorGuardado(p)
-        setNombre(p.nombre)
       }
     })
   }, [])
@@ -23,13 +22,30 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    const inputNombre = identificador.trim()
+    const inputPin = pin.trim()
+
+    if (!inputNombre) {
+      setError('Por favor ingresa tu nombre de usuario o correo.')
+      return
+    }
 
     // Si ya existe un profesor guardado en este equipo
     if (profesorGuardado) {
-      if (profesorGuardado.pin && profesorGuardado.pin !== pin.trim()) {
-        setError('El PIN o clave ingresada no coincide.')
+      const matchNombre =
+        (profesorGuardado.nombre && profesorGuardado.nombre.toLowerCase() === inputNombre.toLowerCase()) ||
+        (profesorGuardado.email && profesorGuardado.email.toLowerCase() === inputNombre.toLowerCase())
+
+      if (!matchNombre) {
+        setError('El usuario o correo no coincide con el profesor registrado en este equipo.')
         return
       }
+
+      if (profesorGuardado.pin && profesorGuardado.pin !== inputPin) {
+        setError('La contraseña o PIN ingresado es incorrecto.')
+        return
+      }
+
       setUsuario({
         rol: 'profesor',
         profesor: profesorGuardado,
@@ -38,16 +54,11 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       return
     }
 
-    // Si es la primera vez que ingresa en este equipo
-    if (!nombre.trim()) {
-      setError('Por favor escribe tu nombre.')
-      return
-    }
-
+    // Si es la primera vez que se registra en este equipo
     const nuevoProfesor: Profesor = {
       id: crypto.randomUUID(),
-      nombre: nombre.trim(),
-      pin: pin.trim() || undefined,
+      nombre: inputNombre,
+      pin: inputPin || undefined,
       cursoActual: '3A',
       created_at: new Date().toISOString(),
     }
@@ -67,42 +78,40 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           ◈
         </div>
         <h2 className="font-display font-bold text-[20px] text-ink">
-          {profesorGuardado ? `¡Hola, ${profesorGuardado.nombre}!` : 'Acceso Docente'}
+          Acceso Docente
         </h2>
         <p className="text-[12px] text-ink/50">
-          {profesorGuardado
-            ? 'Ingresa tu PIN de seguridad para acceder al panel'
-            : 'Perfil local en este computador'}
+          Ingresa tu usuario / correo y tu contraseña o PIN
         </p>
       </div>
 
       <form onSubmit={handleLogin} className="flex flex-col gap-3">
-        {!profesorGuardado && (
-          <div>
-            <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
-              Nombre del Docente *
-            </label>
-            <input
-              className="w-full bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30"
-              placeholder="Ej. Profe María"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              required
-            />
-          </div>
-        )}
-
         <div>
           <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
-            {profesorGuardado?.pin ? 'PIN o Clave de acceso' : 'PIN o Clave (Opcional)'}
+            Usuario o Nombre del Docente *
           </label>
           <input
             className="w-full bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30"
-            placeholder="Ej. 1234"
+            placeholder="Ej. Profe María"
+            value={identificador}
+            onChange={(e) => setIdentificador(e.target.value)}
+            required
+            autoComplete="username"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
+            Contraseña o PIN de acceso *
+          </label>
+          <input
+            className="w-full bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30"
+            placeholder="Ingresa tu clave o PIN"
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            required={!!profesorGuardado?.pin}
+            required
+            autoComplete="current-password"
           />
         </div>
 
@@ -116,9 +125,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           type="submit"
           className="bg-paramo text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#1e3a0f] transition shadow-paper mt-1"
         >
-          {profesorGuardado ? 'Ingresar al Panel' : 'Crear Perfil e Ingresar'}
+          Ingresar al Panel
         </button>
       </form>
     </div>
   )
 }
+
