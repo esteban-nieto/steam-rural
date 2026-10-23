@@ -50,6 +50,16 @@ export type Actividad = {
   fechaCreacion: string
 }
 
+export type RegistroAsistencia = {
+  id: string // `${curso}_${fecha}_${estudiante_id}`
+  curso: string
+  fecha: string // YYYY-MM-DD
+  estudiante_id: string
+  estudiante_nombre: string
+  estado: 'presente' | 'ausente' | 'excusa'
+  observacion?: string
+}
+
 class SteamDB extends Dexie {
   progresos!: Table<Progreso, string>
   estudiantes!: Table<Estudiante, string>
@@ -59,6 +69,7 @@ class SteamDB extends Dexie {
   evaluacionesPendientes!: Table<Evaluacion, string>
   actividades!: Table<Actividad, string>
   profesores!: Table<Profesor, string>
+  asistencias!: Table<RegistroAsistencia, string>
 
   constructor() {
     super('steamDB')
@@ -97,6 +108,17 @@ class SteamDB extends Dexie {
       evaluacionesPendientes: '&id, estudiante_id, actividad_id, fecha',
       actividades: '&id, nombre, fechaCreacion',
       profesores: '&id, email, pin',
+    })
+    this.version(6).stores({
+      progresos: '&id, estudiante_id, actividad_id, fecha',
+      estudiantes: '&id, curso, profesor_id',
+      progresosPendientes: '&id, estudiante_id, actividad_id, fecha',
+      estudiantesPendientes: '&id, curso, profesor_id',
+      evaluaciones: '&id, estudiante_id, actividad_id, fecha',
+      evaluacionesPendientes: '&id, estudiante_id, actividad_id, fecha',
+      actividades: '&id, nombre, fechaCreacion',
+      profesores: '&id, email, pin',
+      asistencias: '&id, curso, fecha, estudiante_id',
     })
     this.on('blocked', () => {
       this.close()
@@ -173,14 +195,35 @@ export async function obtenerProfesorPorPin(pin: string): Promise<Profesor | und
   return profesores.find((p) => p.pin === pin)
 }
 
+// --- Asistencias ---
+export async function guardarAsistenciasLocal(registros: RegistroAsistencia[]) {
+  if (!registros.length) return
+  await db.asistencias.bulkPut(registros).catch((err) => console.error('Error guardando asistencias:', err))
+}
+
+export async function obtenerAsistenciasPorCursoYFecha(curso: string, fecha: string): Promise<RegistroAsistencia[]> {
+  return await db.asistencias.where('curso').equals(curso).filter((a) => a.fecha === fecha).toArray().catch(() => [])
+}
+
+export async function obtenerFechasAsistenciaPorCurso(curso: string): Promise<string[]> {
+  const list = await db.asistencias.where('curso').equals(curso).toArray().catch(() => [])
+  const setFechas = new Set<string>(list.map((a) => a.fecha))
+  return Array.from(setFechas).sort().reverse()
+}
+
+export async function obtenerTodasAsistenciasPorCurso(curso: string): Promise<RegistroAsistencia[]> {
+  return await db.asistencias.where('curso').equals(curso).toArray().catch(() => [])
+}
+
 // Exportar todos los datos para sincronización P2P
 export async function exportarBaseDatosCompleta() {
-  const [estudiantes, progresos, evaluaciones, actividades, profesores] = await Promise.all([
+  const [estudiantes, progresos, evaluaciones, actividades, profesores, asistencias] = await Promise.all([
     db.estudiantes.toArray(),
     db.progresos.toArray(),
     db.evaluaciones.toArray(),
     db.actividades.toArray(),
     db.profesores.toArray(),
+    db.asistencias.toArray(),
   ])
   return {
     version: 1,
@@ -190,6 +233,7 @@ export async function exportarBaseDatosCompleta() {
     evaluaciones,
     actividades,
     profesores,
+    asistencias,
   }
 }
 
@@ -201,7 +245,9 @@ export async function importarBaseDatosCompleta(datos: any) {
   if (datos.evaluaciones?.length) await db.evaluaciones.bulkPut(datos.evaluaciones).catch(() => {})
   if (datos.actividades?.length) await db.actividades.bulkPut(datos.actividades).catch(() => {})
   if (datos.profesores?.length) await db.profesores.bulkPut(datos.profesores).catch(() => {})
+  if (datos.asistencias?.length) await db.asistencias.bulkPut(datos.asistencias).catch(() => {})
   return true
 }
 
 export const EMOCIONES: Emocion[] = ['feliz', 'contento', 'neutro', 'triste', 'enfado']
+
