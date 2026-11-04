@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '../../components/Card'
 import { Layout } from '../../components/Layout'
-import { obtenerActividadesLocales, eliminarActividadLocal, type Actividad } from '../../services/db'
+import { obtenerActividadesLocales, type Actividad } from '../../services/db'
 
 export function EstudianteHome({
   onSelectOrigami,
@@ -18,23 +18,9 @@ export function EstudianteHome({
 }) {
   const [actividadesExtra, setActividadesExtra] = useState<Actividad[]>([])
 
-  const cargarActividades = () => {
-    obtenerActividadesLocales().then((acts) => {
-      setActividadesExtra(acts)
-    })
-  }
-
   useEffect(() => {
-    cargarActividades()
+    obtenerActividadesLocales().then(setActividadesExtra)
   }, [])
-
-  const eliminarActividad = async (e: React.MouseEvent, id: string, nombre: string) => {
-    e.stopPropagation()
-    if (confirm(`¿Estás seguro de que deseas eliminar la actividad "${nombre}"?`)) {
-      await eliminarActividadLocal(id)
-      cargarActividades()
-    }
-  }
 
   return (
     <Layout title="Actividades" onBack={onBack}>
@@ -85,29 +71,19 @@ export function EstudianteHome({
         />
 
         {actividadesExtra.map((act) => (
-          <div key={act.id} className="relative group">
-            <Card
-              title={act.nombre}
-              description={`Actividad creada por el profesor con ${act.numeroPasos} pasos interactivos.`}
-              badge="Personalizada"
-              meta={`${act.numeroPasos} pasos · Práctica`}
-              image={
-                act.portada ||
-                act.pasos.find((p) => p.multimedia && p.tipoMultimedia !== 'video')?.multimedia ||
-                `${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`
-              }
-              onClick={() => onSelectActividadDinamica && onSelectActividadDinamica(act)}
-            />
-            <button
-              type="button"
-              onClick={(e) => eliminarActividad(e, act.id, act.nombre)}
-              title="Eliminar esta actividad"
-              className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-red-600/90 hover:bg-red-700 text-white flex items-center justify-center shadow-md font-bold text-xs transition hover:scale-110"
-              aria-label={`Eliminar ${act.nombre}`}
-            >
-              ✕
-            </button>
-          </div>
+          <Card
+            key={act.id}
+            title={act.nombre}
+            description={`Actividad creada por el profesor con ${act.numeroPasos} pasos interactivos.`}
+            badge="Personalizada"
+            meta={`${act.numeroPasos} pasos · Práctica`}
+            image={
+              act.portada ||
+              act.pasos.find((p) => p.multimedia && p.tipoMultimedia !== 'video')?.multimedia ||
+              `${import.meta.env.BASE_URL}origami/conejo/Portada.jpeg`
+            }
+            onClick={() => onSelectActividadDinamica && onSelectActividadDinamica(act)}
+          />
         ))}
       </div>
     </Layout>

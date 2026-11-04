@@ -9,6 +9,7 @@ import {
   stopP2pHost,
   receiveP2pData,
 } from '../services/tauriBridge'
+import { generarCodigoSincronizacion } from '../services/auth'
 
 interface ModalP2PSyncProps {
   isOpen: boolean
@@ -39,9 +40,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
   useEffect(() => {
     setIsDesktop(isTauriEnvironment())
-    // Generar un PIN aleatorio de 4 dígitos para emitir
-    const pinAleatorio = Math.floor(1000 + Math.random() * 9000).toString()
-    setEmitPin(pinAleatorio)
+    setEmitPin(generarCodigoSincronizacion())
   }, [isOpen])
 
   // Al cerrar el modal, si el servidor emisor estaba activo, apagarlo
@@ -87,15 +86,10 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setExitoRecepcion('')
 
     try {
-      const jsonStr = await receiveP2pData(targetIp.trim(), recibirPin.trim())
-      const parsed = JSON.parse(jsonStr)
-      const ok = await importarBaseDatosCompleta(parsed)
-      if (ok) {
-        setExitoRecepcion('✓ ¡Datos recibidos y actualizados con éxito en este equipo!')
-        if (onSyncCompletado) onSyncCompletado()
-      } else {
-        setErrorRecepcion('Error al guardar los datos importados.')
-      }
+      const jsonStr = await receiveP2pData(targetIp.trim(), recibirPin.trim().toUpperCase())
+      const total = await importarBaseDatosCompleta(JSON.parse(jsonStr))
+      setExitoRecepcion(`✓ ¡Datos recibidos! Se actualizaron ${total} registros en este equipo.`)
+      if (onSyncCompletado) onSyncCompletado()
     } catch (err: any) {
       setErrorRecepcion(err?.message || String(err))
     }
@@ -125,16 +119,15 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setMensajeArchivo('')
     try {
       const text = await file.text()
-      const data = JSON.parse(text)
-      const ok = await importarBaseDatosCompleta(data)
-      if (ok) {
-        setMensajeArchivo('✓ Respaldo importado y base de datos actualizada exitosamente.')
-        if (onSyncCompletado) onSyncCompletado()
-      } else {
-        setMensajeArchivo('Error: Formato de archivo incompatible.')
-      }
-    } catch {
-      setMensajeArchivo('Error leyendo el archivo seleccionado.')
+      const total = await importarBaseDatosCompleta(JSON.parse(text))
+      setMensajeArchivo(`✓ Respaldo importado: se actualizaron ${total} registros.`)
+      if (onSyncCompletado) onSyncCompletado()
+    } catch (err: any) {
+      setMensajeArchivo(
+        err instanceof SyntaxError
+          ? 'Error: el archivo no es un JSON válido.'
+          : `Error: ${err?.message || 'no se pudo importar el archivo.'}`
+      )
     }
   }
 
@@ -254,7 +247,8 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
                   <p className="text-xs text-ink/70">
                     En el otro computador, entra a <b>"Recibir"</b>, escribe la IP <b>{localIp}</b> y
-                    el PIN <b>{emitPin}</b>.
+                    el código <b>{emitPin}</b>. Usa solo redes de confianza: tras 5 códigos
+                    incorrectos la transmisión se detiene.
                   </p>
 
                   <button
@@ -298,13 +292,13 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
               <div>
                 <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
-                  Código PIN de 4 dígitos *
+                  Código de 8 caracteres *
                 </label>
                 <input
                   type="text"
                   value={recibirPin}
                   onChange={(e) => setRecibirPin(e.target.value)}
-                  placeholder="Ej. 4821"
+                  placeholder="Ej. K7PM2XQ9"
                   className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-terracota focus:bg-white"
                   required
                 />

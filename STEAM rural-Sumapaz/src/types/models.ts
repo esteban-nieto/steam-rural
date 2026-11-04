@@ -4,7 +4,10 @@ export type Profesor = {
   id: string
   nombre: string
   email?: string
+  /** Solo en perfiles antiguos; se elimina en el siguiente inicio de sesión. */
   pin?: string
+  pinHash?: string
+  pinSalt?: string
   cursoActual?: string
   created_at: string
 }

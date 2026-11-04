@@ -1,23 +1,15 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react'
-import { db, guardarProfesorLocal, obtenerProfesorActivo } from '../../services/db'
+import { useState } from 'react'
+import { guardarProfesorLocal, obtenerProfesores } from '../../services/db'
+import { crearCredencial, sinCredenciales, verificarPin } from '../../services/auth'
 import { useAppStore } from '../../stores/app.store'
 import type { Profesor } from '../../types/models'
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [identificador, setIdentificador] = useState('')
   const [pin, setPin] = useState('')
-  const [profesorGuardado, setProfesorGuardado] = useState<Profesor | null>(null)
   const [error, setError] = useState('')
   const setUsuario = useAppStore((s) => s.setUsuario)
-
-  useEffect(() => {
-    obtenerProfesorActivo().then((p) => {
-      if (p) {
-        setProfesorGuardado(p)
-      }
-    })
-  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,25 +22,40 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       return
     }
 
-    // Si ya existe un profesor guardado en este equipo
-    if (profesorGuardado) {
-      const matchNombre =
-        (profesorGuardado.nombre && profesorGuardado.nombre.toLowerCase() === inputNombre.toLowerCase()) ||
-        (profesorGuardado.email && profesorGuardado.email.toLowerCase() === inputNombre.toLowerCase())
+    if (inputPin.length < 4) {
+      setError('La contraseña o PIN debe tener al menos 4 caracteres.')
+      return
+    }
 
-      if (!matchNombre) {
-        setError('El usuario o correo no coincide con el profesor registrado en este equipo.')
+    const profesores = await obtenerProfesores()
+
+    // Si ya existe un profesor guardado en este equipo
+    if (profesores.length > 0) {
+      const buscado = inputNombre.toLowerCase()
+      const profesor = profesores.find(
+        (p) => p.nombre?.toLowerCase() === buscado || p.email?.toLowerCase() === buscado
+      )
+
+      if (!profesor) {
+        setError('El usuario o correo no coincide con ningún profesor registrado en este equipo.')
         return
       }
 
-      if (profesorGuardado.pin && profesorGuardado.pin !== inputPin) {
+      const tieneClave = Boolean(profesor.pinHash || profesor.pin)
+      if (tieneClave && !(await verificarPin(profesor, inputPin))) {
         setError('La contraseña o PIN ingresado es incorrecto.')
         return
       }
 
+      // Perfiles antiguos: el PIN en texto plano se reemplaza por su hash.
+      if (!profesor.pinHash) {
+        const { pin: _antiguo, ...resto } = profesor
+        await guardarProfesorLocal({ ...resto, ...(await crearCredencial(inputPin)) })
+      }
+
       setUsuario({
         rol: 'profesor',
-        profesor: profesorGuardado,
+        profesor: sinCredenciales(profesor),
       })
       onSuccess()
       return
@@ -58,7 +65,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
     const nuevoProfesor: Profesor = {
       id: crypto.randomUUID(),
       nombre: inputNombre,
-      pin: inputPin || undefined,
+      ...(await crearCredencial(inputPin)),
       cursoActual: '3A',
       created_at: new Date().toISOString(),
     }
@@ -66,7 +73,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
     await guardarProfesorLocal(nuevoProfesor)
     setUsuario({
       rol: 'profesor',
-      profesor: nuevoProfesor,
+      profesor: sinCredenciales(nuevoProfesor),
     })
     onSuccess()
   }

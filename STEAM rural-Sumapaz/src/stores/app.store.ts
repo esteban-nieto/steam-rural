@@ -42,8 +42,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'steam-storage',
+      // La sesión docente no se guarda: el equipo se comparte con estudiantes.
+      version: 1,
+      migrate: (guardado) => ({
+        emocionActual: (guardado as { emocionActual?: string | null } | null)?.emocionActual ?? null,
+      }) as AppState,
       partialize: (state) => ({
-        usuario: state.usuario,
         emocionActual: state.emocionActual,
       }),
     }

@@ -1,21 +1,18 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react'
 import { Login } from './routes/Auth/Login'
-import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
 import { MolinoCasa } from './routes/Estudiante/MolinoCasa'
 import { ActividadDinamica } from './routes/Estudiante/ActividadDinamica'
 import { HistoriaPueblo } from './routes/HistoriaPueblo'
-import { obtenerProfesorActivo } from './services/db'
 import { useAppStore } from './stores/app.store'
 import type { Actividad } from './services/db'
 
 type View =
   | 'selector'
   | 'login'
-  | 'registro'
   | 'profesor'
   | 'estudiante'
   | 'origami'
@@ -29,7 +26,6 @@ export default function App() {
     return ([
       'selector',
       'login',
-      'registro',
       'profesor',
       'estudiante',
       'origami',
@@ -60,7 +56,6 @@ export default function App() {
         [
           'selector',
           'login',
-          'registro',
           'profesor',
           'estudiante',
           'origami',
@@ -184,7 +179,10 @@ export default function App() {
       </div>
     )
 
-  if (view === 'login')
+  // El panel docente exige sesión, también al entrar por el hash o con "atrás".
+  const sesionDocente = usuario.rol === 'profesor' && !!usuario.profesor
+
+  if (view === 'login' || (view === 'profesor' && !sesionDocente))
     return (
       <div className="min-h-screen bg-paper paper-texture flex flex-col items-center justify-center p-4">
         <button
@@ -194,19 +192,6 @@ export default function App() {
           ← Volver al inicio
         </button>
         <Login onSuccess={() => pushView('profesor')} />
-      </div>
-    )
-
-  if (view === 'registro')
-    return (
-      <div className="min-h-screen bg-paper paper-texture flex flex-col items-center justify-center p-4">
-        <button
-          onClick={() => pushView('selector')}
-          className="mb-4 text-[13px] text-ink/60 hover:text-ink transition flex items-center gap-1 font-semibold"
-        >
-          ← Volver al inicio
-        </button>
-        <Registro onSuccess={() => pushView('profesor')} />
       </div>
     )
 

@@ -15,6 +15,7 @@ import {
   guardarActividadLocal,
   obtenerActividadesLocales,
   eliminarActividadLocal,
+  obtenerCursosGuardados,
   type Actividad,
   type PasoActividad,
 } from '../../services/db'
@@ -2275,6 +2276,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         isOpen={modalP2pOpen}
         onClose={() => setModalP2pOpen(false)}
         onSyncCompletado={() => {
+          setCursos(obtenerCursosGuardados())
           cargar()
           cargarActividadesLocales()
         }}

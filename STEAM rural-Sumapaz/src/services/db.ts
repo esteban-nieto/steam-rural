@@ -120,6 +120,10 @@ class SteamDB extends Dexie {
       profesores: '&id, email, pin',
       asistencias: '&id, curso, fecha, estudiante_id',
     })
+    // Se retira el índice sobre el PIN
+    this.version(7).stores({
+      profesores: '&id, email',
+    })
     this.on('blocked', () => {
       this.close()
       setTimeout(() => location.reload(), 500)
@@ -185,14 +189,8 @@ export async function guardarProfesorLocal(profesor: Profesor) {
   await db.profesores.put(profesor).catch((err) => console.error('Error guardando profesor:', err))
 }
 
-export async function obtenerProfesorActivo(): Promise<Profesor | undefined> {
-  const profesores = await db.profesores.toArray().catch(() => [])
-  return profesores[0]
-}
-
-export async function obtenerProfesorPorPin(pin: string): Promise<Profesor | undefined> {
-  const profesores = await db.profesores.toArray().catch(() => [])
-  return profesores.find((p) => p.pin === pin)
+export async function obtenerProfesores(): Promise<Profesor[]> {
+  return await db.profesores.toArray()
 }
 
 // --- Asistencias ---
@@ -215,38 +213,88 @@ export async function obtenerTodasAsistenciasPorCurso(curso: string): Promise<Re
   return await db.asistencias.where('curso').equals(curso).toArray().catch(() => [])
 }
 
-// Exportar todos los datos para sincronización P2P
+const CLAVE_CURSOS = 'steam_cursos_lista'
+
+function leerCursosGuardados(): string[] {
+  try {
+    const lista = JSON.parse(localStorage.getItem(CLAVE_CURSOS) || '[]')
+    return Array.isArray(lista) ? lista.filter((c) => typeof c === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+// Exportar los datos del aula. Los perfiles docentes y sus claves nunca salen del equipo.
 export async function exportarBaseDatosCompleta() {
-  const [estudiantes, progresos, evaluaciones, actividades, profesores, asistencias] = await Promise.all([
+  const [estudiantes, progresos, evaluaciones, actividades, asistencias] = await Promise.all([
     db.estudiantes.toArray(),
     db.progresos.toArray(),
     db.evaluaciones.toArray(),
     db.actividades.toArray(),
-    db.profesores.toArray(),
     db.asistencias.toArray(),
   ])
   return {
-    version: 1,
+    version: 2,
     fechaExportacion: new Date().toISOString(),
+    cursos: leerCursosGuardados(),
     estudiantes,
     progresos,
     evaluaciones,
     actividades,
-    profesores,
     asistencias,
   }
 }
 
-// Importar todos los datos recibidos de sincronización P2P
-export async function importarBaseDatosCompleta(datos: any) {
-  if (!datos) return false
-  if (datos.estudiantes?.length) await db.estudiantes.bulkPut(datos.estudiantes).catch(() => {})
-  if (datos.progresos?.length) await db.progresos.bulkPut(datos.progresos).catch(() => {})
-  if (datos.evaluaciones?.length) await db.evaluaciones.bulkPut(datos.evaluaciones).catch(() => {})
-  if (datos.actividades?.length) await db.actividades.bulkPut(datos.actividades).catch(() => {})
-  if (datos.profesores?.length) await db.profesores.bulkPut(datos.profesores).catch(() => {})
-  if (datos.asistencias?.length) await db.asistencias.bulkPut(datos.asistencias).catch(() => {})
-  return true
+const esTexto = (v: unknown) => typeof v === 'string' && v.length > 0
+
+const VALIDADORES: Record<string, (r: any) => boolean> = {
+  estudiantes: (r) => esTexto(r.nombre) && esTexto(r.curso),
+  progresos: (r) => esTexto(r.estudiante_id) && esTexto(r.actividad_id),
+  evaluaciones: (r) => esTexto(r.estudiante_id) && esTexto(r.actividad_id) && esTexto(r.fecha),
+  actividades: (r) => esTexto(r.nombre) && Array.isArray(r.pasos),
+  asistencias: (r) => esTexto(r.curso) && esTexto(r.fecha) && esTexto(r.estudiante_id),
+}
+
+/**
+ * Importa datos de otro equipo: valida todo primero y guarda todo o nada.
+ * Los perfiles docentes de respaldos antiguos se ignoran. Lanza un Error con
+ * un mensaje para el usuario si el contenido no es válido o no se puede guardar.
+ */
+export async function importarBaseDatosCompleta(datos: any): Promise<number> {
+  if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+    throw new Error('El archivo no es un respaldo de STEAM Rural.')
+  }
+  const tablas = Object.keys(VALIDADORES).filter((t) => t in datos)
+  if (!tablas.length) {
+    throw new Error('El archivo no es un respaldo de STEAM Rural.')
+  }
+  for (const tabla of tablas) {
+    const registros = datos[tabla]
+    const validos =
+      Array.isArray(registros) &&
+      registros.every((r) => r && typeof r === 'object' && esTexto(r.id) && VALIDADORES[tabla](r))
+    if (!validos) {
+      throw new Error(`Los datos de "${tabla}" están dañados o incompletos. No se importó nada.`)
+    }
+  }
+
+  const tablasDexie = tablas.map((t) => db.table(t))
+  await db.transaction('rw', tablasDexie, async () => {
+    for (const tabla of tablas) await db.table(tabla).bulkPut(datos[tabla])
+  })
+
+  // La lista de cursos vive en localStorage: se completa para que los importados se vean.
+  const delRespaldo = Array.isArray(datos.cursos) ? datos.cursos.filter(esTexto) : []
+  const deEstudiantes = (datos.estudiantes ?? []).map((e: any) => e.curso)
+  const actuales = leerCursosGuardados()
+  const base = actuales.length ? actuales : ['3A', '4B']
+  localStorage.setItem(CLAVE_CURSOS, JSON.stringify([...new Set([...base, ...delRespaldo, ...deEstudiantes])]))
+
+  return tablas.reduce((total, tabla) => total + datos[tabla].length, 0)
+}
+
+export function obtenerCursosGuardados(): string[] {
+  return leerCursosGuardados()
 }
 
 export const EMOCIONES: Emocion[] = ['feliz', 'contento', 'neutro', 'triste', 'enfado']
