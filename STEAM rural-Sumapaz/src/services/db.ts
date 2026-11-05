@@ -48,6 +48,7 @@ export type Actividad = {
   videoPrincipal?: string
   tipoActividad?: 'pasos' | 'video_segmentado'
   fechaCreacion: string
+  profesor_id?: string
 }
 
 export type RegistroAsistencia = {
@@ -190,6 +191,9 @@ export async function adoptarDatosSinDueno(profesorId: string) {
   await db.estudiantes
     .filter((e) => !e.profesor_id)
     .modify({ profesor_id: profesorId })
+  await db.actividades
+    .filter((a) => !a.profesor_id)
+    .modify({ profesor_id: profesorId })
   const antigua = localStorage.getItem('steam_cursos_lista')
   if (antigua) {
     if (!localStorage.getItem(claveCursos(profesorId))) localStorage.setItem(claveCursos(profesorId), antigua)
@@ -198,10 +202,16 @@ export async function adoptarDatosSinDueno(profesorId: string) {
   localStorage.removeItem('steam_curso_activo')
 }
 
-export async function eliminarActividadLocal(id: string) {
+/** Solo el docente que creó la actividad puede borrarla. */
+export async function eliminarActividadLocal(id: string, profesorId: string) {
   await db.transaction('rw', db.actividades, db.eliminados, async () => {
+    const actividad = await db.actividades.get(id)
+    if (!actividad) return
+    if (actividad.profesor_id !== profesorId) {
+      throw new Error('Solo el docente que creó la actividad puede eliminarla.')
+    }
     await db.actividades.delete(id)
-    await db.eliminados.put(marcaEliminado('actividades', id, new Date().toISOString()))
+    await db.eliminados.put(marcaEliminado('actividades', id, new Date().toISOString(), profesorId))
   })
 }
 
@@ -338,7 +348,7 @@ export async function exportarBaseDatosCompleta(profesorId: string) {
     db.asistencias.where('estudiante_id').anyOf(ids).toArray(),
     db.eliminados.toArray(),
   ])
-  const eliminados = todosEliminados.filter((b) => b.tabla === 'actividades' || b.profesor_id === profesorId)
+  const eliminados = todosEliminados.filter((b) => b.profesor_id === profesorId)
   return {
     version: 4,
     eliminados,
@@ -401,12 +411,12 @@ export async function importarBaseDatosCompleta(datos: any, profesorId: string):
   const r: ResultadoImportacion = { aplicados: 0, conservados: 0, eliminados: 0 }
   const cursosAplicados = new Set<string>()
   const cursosBorrados = new Set<string>()
+  const cuentasLocales = new Set(await db.profesores.toCollection().primaryKeys())
 
   await db.transaction('rw', [...TABLAS_SINCRONIZADAS.map((t) => db.table(t)), db.eliminados], async () => {
     // ¿El registro pertenece a otra cuenta de este equipo?
     const esAjeno = async (tabla: string, r: any) => {
-      if (tabla === 'actividades') return false
-      const dueno = tabla === 'estudiantes' ? r : await db.estudiantes.get(r.estudiante_id)
+      const dueno = tabla === 'estudiantes' || tabla === 'actividades' ? r : await db.estudiantes.get(r.estudiante_id)
       return !!dueno?.profesor_id && dueno.profesor_id !== profesorId
     }
 
@@ -435,7 +445,7 @@ export async function importarBaseDatosCompleta(datos: any, profesorId: string):
         const actual = await db.table(tabla).get(entrante.id)
         if (
           (actual && (await esAjeno(tabla, actual) || marcaDeTiempo(actual) >= marca)) ||
-          (await esAjeno(tabla === 'estudiantes' ? 'actividades' : tabla, entrante))
+          (tabla !== 'estudiantes' && tabla !== 'actividades' && (await esAjeno(tabla, entrante)))
         ) {
           r.conservados++
           continue
@@ -444,6 +454,11 @@ export async function importarBaseDatosCompleta(datos: any, profesorId: string):
         await db.table(tabla).put({
           ...entrante,
           ...(tabla === 'estudiantes' ? { profesor_id: profesorId } : {}),
+          // Una actividad de otra cuenta de este equipo conserva a su creador;
+          // si viene de otro equipo, queda a cargo de quien la importa.
+          ...(tabla === 'actividades'
+            ? { profesor_id: cuentasLocales.has(entrante.profesor_id) ? entrante.profesor_id : profesorId }
+            : {}),
           updated_at: marca || '1970-01-01T00:00:00.000Z',
         })
         if (borrado) await db.eliminados.delete(borrado.id)

@@ -230,6 +230,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       label: a.nombre,
       pasos: a.numeroPasos,
       esDinamica: true,
+      esPropia: a.profesor_id === profesorId,
     })),
   ]
 
@@ -273,6 +274,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     }
     const nueva: Actividad = {
       id: `act-${Date.now()}`,
+      profesor_id: profesorId,
       nombre: nombreNuevaAct.trim(),
       numeroPasos: numPasosNuevaAct,
       pasos: pasosNuevaAct,
@@ -371,6 +373,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
 
     const nueva: Actividad = {
       id: `act-video-${Date.now()}`,
+      profesor_id: profesorId,
       nombre: nombreActVideo.trim(),
       numeroPasos: numPasosVideo,
       tipoActividad: 'video_segmentado',
@@ -398,7 +401,12 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
 
   const eliminarActividad = async (id: string) => {
     if (confirm('¿Seguro que deseas eliminar esta actividad?')) {
-      await eliminarActividadLocal(id)
+      try {
+        await eliminarActividadLocal(id, profesorId)
+      } catch (err: any) {
+        alert(err?.message || 'No se pudo eliminar la actividad.')
+        return
+      }
       await cargarActividadesLocales()
       if (actividad === id) setActividad('origami-conejo')
     }
@@ -1166,7 +1174,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                           {a.pasos} pasos · {a.id === 'molino-casa' ? 'Video + Rúbrica' : a.esDinamica ? 'Personalizada' : 'Papel'}
                         </span>
                       </button>
-                      {a.esDinamica && (
+                      {a.esPropia && (
                         <button
                           type="button"
                           onClick={(e) => {
