@@ -38,8 +38,40 @@ export function sinCredenciales(profesor: Profesor): Profesor {
   return publico
 }
 
-/** Código temporal de 8 caracteres, sin letras ni números que se confundan al dictarlo. */
+/** Código temporal de 12 caracteres (60 bits), sin letras ni números que se confundan al dictarlo. */
 export function generarCodigoSincronizacion(): string {
   const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // 32 símbolos: el módulo no introduce sesgo
-  return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => alfabeto[b % alfabeto.length]).join('')
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => alfabeto[b % alfabeto.length]).join('')
+}
+
+export const PIN_MINIMO = 6
+const MAX_FALLOS = 5
+const ESPERA_MS = 30_000
+const CLAVE_FALLOS = 'steam_login_fallos'
+
+/** Milisegundos que faltan para poder reintentar el ingreso. */
+export function esperaLogin(): number {
+  try {
+    const { hasta = 0 } = JSON.parse(localStorage.getItem(CLAVE_FALLOS) || '{}')
+    return Math.max(0, hasta - Date.now())
+  } catch {
+    return 0
+  }
+}
+
+export function registrarFalloLogin() {
+  let fallos = 0
+  try {
+    fallos = JSON.parse(localStorage.getItem(CLAVE_FALLOS) || '{}').fallos || 0
+  } catch {}
+  fallos += 1
+  const bloquear = fallos >= MAX_FALLOS
+  localStorage.setItem(
+    CLAVE_FALLOS,
+    JSON.stringify(bloquear ? { fallos: 0, hasta: Date.now() + ESPERA_MS } : { fallos })
+  )
+}
+
+export function limpiarFallosLogin() {
+  localStorage.removeItem(CLAVE_FALLOS)
 }

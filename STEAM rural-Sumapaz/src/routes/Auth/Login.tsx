@@ -1,11 +1,18 @@
 // @ts-nocheck
 import { useState } from 'react'
-import { guardarProfesorLocal, obtenerProfesores } from '../../services/db'
-import { crearCredencial, sinCredenciales, verificarPin } from '../../services/auth'
+import { adoptarDatosSinDueno, guardarProfesorLocal, obtenerProfesores } from '../../services/db'
+import {
+  PIN_MINIMO,
+  crearCredencial,
+  esperaLogin,
+  limpiarFallosLogin,
+  registrarFalloLogin,
+  sinCredenciales,
+  verificarPin,
+} from '../../services/auth'
 import { useAppStore } from '../../stores/app.store'
-import type { Profesor } from '../../types/models'
 
-export function Login({ onSuccess }: { onSuccess: () => void }) {
+export function Login({ onSuccess, onRegistrar }: { onSuccess: () => void; onRegistrar: () => void }) {
   const [identificador, setIdentificador] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
@@ -22,11 +29,13 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       return
     }
 
-    if (inputPin.length < 4) {
-      setError('La contraseña o PIN debe tener al menos 4 caracteres.')
+    const espera = esperaLogin()
+    if (espera > 0) {
+      setError(`Demasiados intentos. Espera ${Math.ceil(espera / 1000)} segundos.`)
       return
     }
 
+    const claveCorta = `La contraseña o PIN debe tener al menos ${PIN_MINIMO} caracteres.`
     const profesores = await obtenerProfesores()
 
     // Si ya existe un profesor guardado en este equipo
@@ -37,15 +46,22 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       )
 
       if (!profesor) {
+        registrarFalloLogin()
         setError('El usuario o correo no coincide con ningún profesor registrado en este equipo.')
         return
       }
 
       const tieneClave = Boolean(profesor.pinHash || profesor.pin)
+      if (!tieneClave && inputPin.length < PIN_MINIMO) {
+        setError(claveCorta)
+        return
+      }
       if (tieneClave && !(await verificarPin(profesor, inputPin))) {
+        registrarFalloLogin()
         setError('La contraseña o PIN ingresado es incorrecto.')
         return
       }
+      limpiarFallosLogin()
 
       // Perfiles antiguos: el PIN en texto plano se reemplaza por su hash.
       if (!profesor.pinHash) {
@@ -53,6 +69,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         await guardarProfesorLocal({ ...resto, ...(await crearCredencial(inputPin)) })
       }
 
+      await adoptarDatosSinDueno(profesor.id)
       setUsuario({
         rol: 'profesor',
         profesor: sinCredenciales(profesor),
@@ -61,21 +78,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       return
     }
 
-    // Si es la primera vez que se registra en este equipo
-    const nuevoProfesor: Profesor = {
-      id: crypto.randomUUID(),
-      nombre: inputNombre,
-      ...(await crearCredencial(inputPin)),
-      cursoActual: '3A',
-      created_at: new Date().toISOString(),
-    }
-
-    await guardarProfesorLocal(nuevoProfesor)
-    setUsuario({
-      rol: 'profesor',
-      profesor: sinCredenciales(nuevoProfesor),
-    })
-    onSuccess()
+    setError('Aún no hay cuentas en este equipo. Crea la primera con "Crear cuenta".')
   }
 
   return (
@@ -133,6 +136,13 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           className="bg-paramo text-white rounded-full py-2.5 font-bold text-[14px] hover:bg-[#1e3a0f] transition shadow-paper mt-1"
         >
           Ingresar al Panel
+        </button>
+        <button
+          type="button"
+          onClick={onRegistrar}
+          className="text-[13px] font-semibold text-paramo hover:underline"
+        >
+          Crear cuenta
         </button>
       </form>
     </div>

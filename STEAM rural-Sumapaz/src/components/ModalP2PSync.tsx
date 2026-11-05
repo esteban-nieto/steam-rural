@@ -10,6 +10,18 @@ import {
   receiveP2pData,
 } from '../services/tauriBridge'
 import { generarCodigoSincronizacion } from '../services/auth'
+import { useAppStore } from '../stores/app.store'
+import {
+  cifrarTexto,
+  descifrarSobre,
+  esSobreCifrado,
+  normalizarCodigo,
+  tokenDeAcceso,
+} from '../services/cifrado'
+
+function resumenImportacion(r: { aplicados: number; conservados: number; eliminados: number }) {
+  return `${r.aplicados} registros actualizados, ${r.conservados} más recientes conservados en este equipo y ${r.eliminados} eliminados.`
+}
 
 interface ModalP2PSyncProps {
   isOpen: boolean
@@ -18,6 +30,7 @@ interface ModalP2PSyncProps {
 }
 
 export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSyncProps) {
+  const profesorId = useAppStore((s) => s.usuario.profesor?.id) as string
   const [tab, setTab] = useState<'emitir' | 'recibir' | 'archivo'>('emitir')
   const [isDesktop, setIsDesktop] = useState(false)
 
@@ -37,6 +50,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
   // Estados para modo Respaldo por Archivo (.json)
   const [mensajeArchivo, setMensajeArchivo] = useState('')
+  const [claveArchivo, setClaveArchivo] = useState('')
 
   useEffect(() => {
     setIsDesktop(isTauriEnvironment())
@@ -57,9 +71,9 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setCargandoEmision(true)
     setMensajeEmision('')
     try {
-      const data = await exportarBaseDatosCompleta()
-      const jsonStr = JSON.stringify(data)
-      const ip = await startP2pHost(emitPin, jsonStr)
+      const data = await exportarBaseDatosCompleta(profesorId)
+      const cifrado = await cifrarTexto(JSON.stringify(data), emitPin)
+      const ip = await startP2pHost(await tokenDeAcceso(emitPin), cifrado)
       setLocalIp(ip)
       setServidorActivo(true)
       setMensajeEmision('Listo: Esperando conexión desde el otro computador...')
@@ -86,9 +100,11 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setExitoRecepcion('')
 
     try {
-      const jsonStr = await receiveP2pData(targetIp.trim(), recibirPin.trim().toUpperCase())
-      const total = await importarBaseDatosCompleta(JSON.parse(jsonStr))
-      setExitoRecepcion(`✓ ¡Datos recibidos! Se actualizaron ${total} registros en este equipo.`)
+      const codigo = normalizarCodigo(recibirPin)
+      const sobre = JSON.parse(await receiveP2pData(targetIp.trim(), await tokenDeAcceso(codigo)))
+      if (!esSobreCifrado(sobre)) throw new Error('El otro equipo envió datos sin cifrar. Actualiza la app en ambos equipos.')
+      const r = await importarBaseDatosCompleta(JSON.parse(await descifrarSobre(sobre, codigo)), profesorId)
+      setExitoRecepcion(`✓ ¡Datos recibidos! ${resumenImportacion(r)}`)
       if (onSyncCompletado) onSyncCompletado()
     } catch (err: any) {
       setErrorRecepcion(err?.message || String(err))
@@ -99,16 +115,22 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
   // Exportar respaldo manual como archivo JSON (para USB)
   const handleExportarArchivo = async () => {
     try {
-      const data = await exportarBaseDatosCompleta()
-      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`
+      if (claveArchivo.length < 8) {
+        setMensajeArchivo('Escribe una clave de al menos 8 caracteres para proteger el respaldo.')
+        return
+      }
+      const data = await exportarBaseDatosCompleta(profesorId)
+      const cifrado = await cifrarTexto(JSON.stringify(data), claveArchivo)
+      const url = URL.createObjectURL(new Blob([cifrado], { type: 'application/json' }))
       const downloadAnchor = document.createElement('a')
-      downloadAnchor.setAttribute('href', jsonString)
+      downloadAnchor.href = url
       const fecha = new Date().toISOString().split('T')[0]
       downloadAnchor.setAttribute('download', `respaldo_steam_rural_${fecha}.json`)
       document.body.appendChild(downloadAnchor)
       downloadAnchor.click()
       downloadAnchor.remove()
-      setMensajeArchivo('✓ Archivo de respaldo descargado correctamente.')
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+      setMensajeArchivo('✓ Respaldo cifrado generado. Sin esta clave no se podrá abrir.')
     } catch {
       setMensajeArchivo('Error al generar archivo de respaldo.')
     }
@@ -118,9 +140,16 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
   const handleImportarArchivo = async (file: File) => {
     setMensajeArchivo('')
     try {
-      const text = await file.text()
-      const total = await importarBaseDatosCompleta(JSON.parse(text))
-      setMensajeArchivo(`✓ Respaldo importado: se actualizaron ${total} registros.`)
+      let contenido = JSON.parse(await file.text())
+      if (esSobreCifrado(contenido)) {
+        if (!claveArchivo) {
+          setMensajeArchivo('Este respaldo está cifrado: escribe su clave y vuelve a seleccionarlo.')
+          return
+        }
+        contenido = JSON.parse(await descifrarSobre(contenido, claveArchivo))
+      }
+      const r = await importarBaseDatosCompleta(contenido, profesorId)
+      setMensajeArchivo(`✓ Respaldo importado. ${resumenImportacion(r)}`)
       if (onSyncCompletado) onSyncCompletado()
     } catch (err: any) {
       setMensajeArchivo(
@@ -239,7 +268,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                       <span className="block text-[11px] font-bold text-ink/60 uppercase">
                         PIN de Seguridad
                       </span>
-                      <span className="font-mono text-2xl font-black text-paramo">
+                      <span className="font-mono text-base font-black text-paramo break-all">
                         {emitPin}
                       </span>
                     </div>
@@ -247,7 +276,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
                   <p className="text-xs text-ink/70">
                     En el otro computador, entra a <b>"Recibir"</b>, escribe la IP <b>{localIp}</b> y
-                    el código <b>{emitPin}</b>. Usa solo redes de confianza: tras 5 códigos
+                    el código <b>{emitPin}</b>. Los datos viajan cifrados; tras 5 intentos
                     incorrectos la transmisión se detiene.
                   </p>
 
@@ -292,13 +321,13 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
               <div>
                 <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
-                  Código de 8 caracteres *
+                  Código de 12 caracteres *
                 </label>
                 <input
                   type="text"
                   value={recibirPin}
                   onChange={(e) => setRecibirPin(e.target.value)}
-                  placeholder="Ej. K7PM2XQ9"
+                  placeholder="Ej. K7PM2XQ9R4TW"
                   className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-terracota focus:bg-white"
                   required
                 />
@@ -334,6 +363,23 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                 memoria USB para pasarlo manualmente a cualquier computador.
               </p>
 
+              <div>
+                <label className="block text-[11px] font-bold text-ink/70 uppercase mb-1">
+                  Clave del respaldo *
+                </label>
+                <input
+                  type="password"
+                  value={claveArchivo}
+                  onChange={(e) => setClaveArchivo(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  autoComplete="off"
+                  className="w-full bg-paper border border-[#E8E0D0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-clay focus:bg-white"
+                />
+                <p className="text-[11px] text-ink/50 mt-1">
+                  El archivo se guarda cifrado. Si olvidas la clave, no se puede recuperar.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="bg-paper p-4 rounded-xl border border-[#E8E0D0] flex flex-col justify-between gap-3 text-center">
                   <div>
@@ -368,6 +414,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) handleImportarArchivo(file)
+                        e.target.value = ''
                       }}
                       className="hidden"
                     />

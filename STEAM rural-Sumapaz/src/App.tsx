@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react'
 import { Login } from './routes/Auth/Login'
+import { Registro } from './routes/Auth/Registro'
 import { ProfesorHome } from './routes/Profesor/Home'
 import { EstudianteHome } from './routes/Estudiante/Home'
 import { OrigamiDetalle } from './routes/Estudiante/Origami'
@@ -13,6 +14,7 @@ import type { Actividad } from './services/db'
 type View =
   | 'selector'
   | 'login'
+  | 'registro'
   | 'profesor'
   | 'estudiante'
   | 'origami'
@@ -26,6 +28,7 @@ export default function App() {
     return ([
       'selector',
       'login',
+      'registro',
       'profesor',
       'estudiante',
       'origami',
@@ -56,6 +59,7 @@ export default function App() {
         [
           'selector',
           'login',
+          'registro',
           'profesor',
           'estudiante',
           'origami',
@@ -191,7 +195,20 @@ export default function App() {
         >
           ← Volver al inicio
         </button>
-        <Login onSuccess={() => pushView('profesor')} />
+        <Login onSuccess={() => pushView('profesor')} onRegistrar={() => pushView('registro')} />
+      </div>
+    )
+
+  if (view === 'registro')
+    return (
+      <div className="min-h-screen bg-paper paper-texture flex flex-col items-center justify-center p-4">
+        <button
+          onClick={() => pushView('selector')}
+          className="mb-4 text-[13px] text-ink/60 hover:text-ink transition flex items-center gap-1 font-semibold"
+        >
+          ← Volver al inicio
+        </button>
+        <Registro onSuccess={() => pushView('profesor')} onIrALogin={() => pushView('login')} />
       </div>
     )
 

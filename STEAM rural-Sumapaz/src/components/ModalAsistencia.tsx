@@ -37,12 +37,12 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
   }, [isOpen, curso, fechaSeleccionada])
 
   const cargarFechas = async () => {
-    const fechas = await obtenerFechasAsistenciaPorCurso(curso)
+    const fechas = await obtenerFechasAsistenciaPorCurso(curso, estudiantes.map((e) => e.id))
     setFechasDisponibles(fechas)
   }
 
   const cargarAsistenciaDia = async (fecha: string) => {
-    const registros = await obtenerAsistenciasPorCursoYFecha(curso, fecha)
+    const registros = await obtenerAsistenciasPorCursoYFecha(curso, estudiantes.map((e) => e.id), fecha)
     const map: Record<string, { estado: 'presente' | 'ausente' | 'excusa'; observacion?: string }> = {}
 
     // Si ya hay guardados
@@ -115,7 +115,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
 
   // Generador de Excel XML nativo con estilos y bordes (.xls / .xlsx compatible)
   const generarExcelAsistencias = async () => {
-    const todosRegistros = await obtenerTodasAsistenciasPorCurso(curso)
+    const todosRegistros = await obtenerTodasAsistenciasPorCurso(curso, estudiantes.map((e) => e.id))
 
     // Filtrar fechas según selección del usuario
     let fechasAExportar: string[] = []

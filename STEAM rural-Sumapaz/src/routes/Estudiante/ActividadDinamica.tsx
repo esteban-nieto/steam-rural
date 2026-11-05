@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Layout } from '../../components/Layout'
-import { EmotionPicker } from '../../components/EmotionPicker'
+import { RegistroFinalActividad } from '../../components/RegistroFinalActividad'
 import type { Actividad } from '../../services/db'
 
 interface Props {
@@ -10,7 +10,6 @@ interface Props {
 
 export function ActividadDinamica({ actividad, onBack }: Props) {
   const [paso, setPaso] = useState(0)
-  const [emocionFin, setEmocionFin] = useState<string>()
   const [completados, setCompletados] = useState<Set<number>>(new Set())
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -139,12 +138,7 @@ export function ActividadDinamica({ actividad, onBack }: Props) {
           {/* Registro emocional al completar */}
           {paso === total - 1 && (
             <div className="mt-6 pt-5 border-t border-[#E8E0D0] text-center">
-              <h4 className="font-display font-bold text-ink mb-2">
-                ¿Cómo te sientes después de completar esta actividad?
-              </h4>
-              <div className="flex justify-center">
-                <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
-              </div>
+              <RegistroFinalActividad actividadId={actividad.id} totalPasos={total} />
             </div>
           )}
         </div>

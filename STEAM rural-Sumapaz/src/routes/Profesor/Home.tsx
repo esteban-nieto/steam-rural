@@ -16,6 +16,9 @@ import {
   obtenerActividadesLocales,
   eliminarActividadLocal,
   obtenerCursosGuardados,
+  guardarCursos,
+  eliminarCursoCompleto,
+  restaurarCurso,
   type Actividad,
   type PasoActividad,
 } from '../../services/db'
@@ -63,15 +66,16 @@ const RUBRICA = [
 ]
 
 export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }) {
-  const [curso, setCurso] = useState(() => {
-    return localStorage.getItem('steam_curso_activo') || '3A'
-  })
+  // App solo muestra este panel con sesión docente activa
+  const profesorId = useAppStore((s) => s.usuario.profesor?.id) as string
+  const claveCursoActivo = `steam_curso_activo:${profesorId}`
   const [cursos, setCursos] = useState<string[]>(() => {
-    try {
-      const guardados = localStorage.getItem('steam_cursos_lista')
-      if (guardados) return JSON.parse(guardados)
-    } catch {}
-    return ['3A', '4B']
+    const guardados = obtenerCursosGuardados(profesorId)
+    return guardados.length ? guardados : ['3A', '4B']
+  })
+  const [curso, setCurso] = useState(() => {
+    const activo = localStorage.getItem(claveCursoActivo)
+    return activo && cursos.includes(activo) ? activo : cursos[0]
   })
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [nombre, setNombre] = useState('')
@@ -110,7 +114,11 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
 
   const cargar = async () => {
     try {
-      const local = await db.estudiantes.where('curso').equals(curso).toArray()
+      const local = await db.estudiantes
+        .where('profesor_id')
+        .equals(profesorId)
+        .filter((e) => e.curso === curso)
+        .toArray()
       setEstudiantes(local as any)
     } catch {
       setEstudiantes([])
@@ -118,12 +126,12 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   }
 
   useEffect(() => {
-    localStorage.setItem('steam_curso_activo', curso)
+    localStorage.setItem(claveCursoActivo, curso)
     cargar()
   }, [curso])
 
   useEffect(() => {
-    localStorage.setItem('steam_cursos_lista', JSON.stringify(cursos))
+    guardarCursos(profesorId, cursos)
   }, [cursos])
 
   useEffect(() => {
@@ -146,6 +154,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       id: tempId,
       nombre: nombre.trim(),
       curso,
+      profesor_id: profesorId,
       created_at: new Date().toISOString(),
     }
     setEstudiantes((p) => [...p, nuevo as Estudiante])
@@ -164,6 +173,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     setCursos(nuevos)
     setCurso(c)
     setNuevoCurso('')
+    restaurarCurso(c, profesorId).catch((e) => console.error('Error al restaurar el curso:', e))
   }
 
   const eliminarCurso = async (cursoAEliminar: string) => {
@@ -172,18 +182,16 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       return
     }
     const confirmar = confirm(
-      `¿Deseas eliminar el curso "${cursoAEliminar}"? Los estudiantes y datos guardados de este curso también podrán eliminarse.`
+      `¿Deseas eliminar el curso "${cursoAEliminar}"? También se borrarán sus estudiantes, progresos, rúbricas y asistencias. Esta acción no se puede deshacer.`
     )
     if (!confirmar) return
 
     try {
-      const estudiantesCurso = await db.estudiantes.where('curso').equals(cursoAEliminar).toArray()
-      if (estudiantesCurso.length > 0) {
-        const ids = estudiantesCurso.map((e) => e.id)
-        await db.estudiantes.bulkDelete(ids)
-      }
+      await eliminarCursoCompleto(cursoAEliminar, profesorId)
     } catch (e) {
-      console.error('Error al limpiar estudiantes del curso:', e)
+      console.error('Error al eliminar el curso:', e)
+      alert('No se pudo eliminar el curso. No se borró ningún dato.')
+      return
     }
 
     const nuevosCursos = cursos.filter((c) => c !== cursoAEliminar)
@@ -415,7 +423,13 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       observaciones: obs,
       created_at: new Date().toISOString(),
     }
-    await db.evaluaciones.put(evLocal).catch(() => {})
+    try {
+      await db.evaluaciones.put(evLocal)
+    } catch (err) {
+      console.error('Error guardando rúbrica:', err)
+      setMensajeRubrica('⚠ No se pudo guardar la rúbrica. Inténtalo de nuevo.')
+      return
+    }
     setMensajeRubrica('✓ Rúbrica guardada localmente')
 
     setHistorialEval((p) => {
@@ -870,8 +884,9 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       }
       setMensaje('✓ Registro guardado localmente')
       setHistorial((prev) => [progreso, ...prev])
-    } catch {
-      setMensaje('✓ Guardado localmente')
+    } catch (err) {
+      console.error('Error guardando registro:', err)
+      setMensaje('⚠ No se pudo guardar el registro. Inténtalo de nuevo.')
     }
     setGuardando(false)
     setTimeout(() => setMensaje(''), 2500)
@@ -2276,7 +2291,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         isOpen={modalP2pOpen}
         onClose={() => setModalP2pOpen(false)}
         onSyncCompletado={() => {
-          setCursos(obtenerCursosGuardados())
+          setCursos(obtenerCursosGuardados(profesorId))
           cargar()
           cargarActividadesLocales()
         }}

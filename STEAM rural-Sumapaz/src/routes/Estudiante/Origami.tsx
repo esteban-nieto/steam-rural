@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Layout } from '../../components/Layout'
-import { EmotionPicker } from '../../components/EmotionPicker'
+import { RegistroFinalActividad } from '../../components/RegistroFinalActividad'
 
 const base = import.meta.env.BASE_URL
 const PASOS_EJEMPLO = [
@@ -19,7 +19,6 @@ const PASOS_EJEMPLO = [
 
 export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
   const [paso, setPaso] = useState(0)
-  const [emocionFin, setEmocionFin] = useState<string>()
   const [completados, setCompletados] = useState<Set<number>>(new Set())
 
   const marcar = () => {
@@ -85,11 +84,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
           <p className="text-3xl mb-2">🎉</p>
           <h3 className="font-display font-bold text-[18px] text-ink">¡Muy bien!</h3>
           <p className="text-[14px] leading-relaxed text-ink mt-2">Ahora decóralo como tu animal favorito y podrás llevarlo siempre en tu cuaderno.</p>
-          <div className="mt-4">
-            <p className="text-[13px] text-ink/60 mb-2">¿Cómo te sientes al terminar?</p>
-            <EmotionPicker value={emocionFin} onSelect={setEmocionFin} />
-            {emocionFin && <p className="text-[12px] font-medium text-paramo mt-3">¡Registrado! Tu profe verá tu progreso.</p>}
-          </div>
+          <RegistroFinalActividad actividadId="origami-conejo" totalPasos={PASOS_EJEMPLO.length} />
         </div>
       )}
 

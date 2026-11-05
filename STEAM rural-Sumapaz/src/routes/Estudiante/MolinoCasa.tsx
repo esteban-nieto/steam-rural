@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { RegistroFinalActividad } from '../../components/RegistroFinalActividad'
 import { Layout } from '../../components/Layout'
 
 type Checkpoint = { id: number; start: number; end: number; label: string }
@@ -40,14 +41,47 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
   const cp = CHECKPOINTS[idx]
   const total = CHECKPOINTS.length
 
+  // El servidor interno de la app no permite saltar a partes aún no descargadas del video:
+  // el salto se ignoraba si el paso no había terminado. Con el video completo en memoria,
+  // cualquier punto es alcanzable.
+  const [videoSrc, setVideoSrc] = useState<string>()
+  useEffect(() => {
+    const url = `${import.meta.env.BASE_URL}videos/molino-casa.mp4`
+    let cancelado = false
+    let objectUrl: string | undefined
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.blob()
+      })
+      .then((blob) => {
+        if (cancelado) return
+        objectUrl = URL.createObjectURL(blob)
+        setVideoSrc(objectUrl)
+      })
+      .catch(() => {
+        if (!cancelado) setVideoSrc(url)
+      })
+    return () => {
+      cancelado = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [])
+
   useEffect(() => {
     const v = videoRef.current
-    if (!v) return
-    v.currentTime = cp.start
-    const playPromise = v.play()
-    if (playPromise) playPromise.catch(() => {})
-    setIsPlaying(true)
-  }, [idx])
+    if (!v || !videoSrc) return
+    const irAlPaso = () => {
+      v.currentTime = cp.start
+      v.play().catch(() => {})
+    }
+    if (v.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      irAlPaso()
+      return
+    }
+    v.addEventListener('loadedmetadata', irAlPaso, { once: true })
+    return () => v.removeEventListener('loadedmetadata', irAlPaso)
+  }, [idx, videoSrc])
 
   useEffect(() => {
     const v = videoRef.current
@@ -72,8 +106,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
     const v = videoRef.current
     if (!v) return
     if (v.currentTime < cp.start || v.currentTime >= cp.end) v.currentTime = cp.start
-    v.play()
-    setIsPlaying(true)
+    v.play().catch(() => {})
   }
 
   const handlePause = () => {
@@ -105,7 +138,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
           <div className="aspect-video bg-black rounded-2xl overflow-hidden relative border border-[#E8E0D0]">
             <video
               ref={videoRef}
-              src={`${import.meta.env.BASE_URL}videos/molino-casa.mp4`}
+              src={videoSrc}
               poster={`${import.meta.env.BASE_URL}videos/Portada.png`}
               preload="metadata"
               playsInline
@@ -172,6 +205,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
           <h3 className="font-display font-bold text-[18px] text-ink">¡Molino y casa terminados!</h3>
           <p className="text-[13px] text-ink/60 mt-2">Así debe quedar tu proyecto:</p>
           <img src={`${import.meta.env.BASE_URL}videos/Portada.png`} alt="Molino y casa terminados - referencia final" className="w-full max-w-sm mx-auto mt-4 rounded-2xl border border-[#E8E0D0] object-contain" />
+          <RegistroFinalActividad actividadId="molino-casa" totalPasos={total} />
         </div>
       )}
 

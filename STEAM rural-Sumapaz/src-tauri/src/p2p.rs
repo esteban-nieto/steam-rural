@@ -81,12 +81,42 @@ fn interpretar_respuesta(respuesta: &[u8]) -> Result<String, String> {
 /// Obtiene la dirección IP local de este computador en la red WiFi o LAN
 #[tauri::command]
 pub fn get_local_ip() -> Result<String, String> {
-    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
-    socket
-        .connect("8.8.8.8:80")
-        .map_err(|_e| "No se pudo detectar red local conectada".to_string())?;
-    let local_addr = socket.local_addr().map_err(|e| e.to_string())?;
-    Ok(local_addr.ip().to_string())
+    // Con puerta de enlace, el sistema indica la interfaz de salida (no se envía ningún paquete).
+    if let Some(ip) = ip_por_ruta() {
+        return Ok(ip.to_string());
+    }
+    // Sin puerta de enlace (router sin internet, punto de acceso o cable directo).
+    let interfaces = local_ip_address::list_afinet_netifas().map_err(|e| e.to_string())?;
+    elegir_ip_local(&interfaces)
+        .map(|ip| ip.to_string())
+        .ok_or_else(|| "No se detectó ninguna red local conectada. Conéctate al WiFi o router del aula.".to_string())
+}
+
+fn ip_por_ruta() -> Option<IpAddr> {
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    let ip = socket.local_addr().ok()?.ip();
+    (!ip.is_loopback() && !ip.is_unspecified()).then_some(ip)
+}
+
+/// Prefiere redes privadas físicas; las direcciones 169.254.x.x (cable directo) quedan al final.
+fn elegir_ip_local(interfaces: &[(String, IpAddr)]) -> Option<IpAddr> {
+    let virtual_ = |nombre: &str| {
+        let n = nombre.to_lowercase();
+        ["vethernet", "virtualbox", "vmware", "wsl", "hyper-v", "loopback"]
+            .iter()
+            .any(|v| n.contains(v))
+    };
+    let candidatas = || {
+        interfaces.iter().filter_map(|(nombre, ip)| match ip {
+            IpAddr::V4(v4) if !virtual_(nombre) => Some(*v4),
+            _ => None,
+        })
+    };
+    candidatas()
+        .find(|ip| ip.is_private())
+        .or_else(|| candidatas().find(|ip| ip.is_link_local()))
+        .map(IpAddr::V4)
 }
 
 /// Inicia el servidor emisor temporal en el puerto 4545
@@ -99,10 +129,7 @@ pub fn start_p2p_host(pin: String, json_data: String) -> Result<String, String> 
     RUNNING.store(false, Ordering::SeqCst);
     thread::sleep(Duration::from_millis(150));
 
-    let local_ip = match get_local_ip() {
-        Ok(ip) => ip,
-        Err(_) => "127.0.0.1".to_string(),
-    };
+    let local_ip = get_local_ip()?;
 
     let bind_addr = format!("0.0.0.0:{}", P2P_PORT);
     let listener = TcpListener::bind(&bind_addr).map_err(|e| format!("Error enlazando puerto 4545: {}", e))?;
@@ -223,6 +250,23 @@ mod tests {
             "GET / HTTP/1.1\r\nx-steam-pin: AAAA\r\nx-steam-pin: ABCD2345\r\n\r\n",
             "ABCD2345"
         ));
+    }
+
+    #[test]
+    fn elige_ip_sin_puerta_de_enlace() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        let i = |n: &str, s: &str| (n.to_string(), ip(s));
+        assert_eq!(
+            elegir_ip_local(&[
+                i("Loopback Pseudo-Interface 1", "127.0.0.1"),
+                i("vEthernet (WSL)", "172.20.0.1"),
+                i("Ethernet", "169.254.3.4"),
+                i("Wi-Fi", "192.168.137.5"),
+            ]),
+            Some(ip("192.168.137.5"))
+        );
+        assert_eq!(elegir_ip_local(&[i("Ethernet", "169.254.3.4")]), Some(ip("169.254.3.4")));
+        assert_eq!(elegir_ip_local(&[i("Loopback", "127.0.0.1")]), None);
     }
 
     #[test]
