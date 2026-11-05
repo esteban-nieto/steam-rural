@@ -1,55 +1,23 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { Estudiante, Profesor } from '../types/models'
-
-type Rol = 'login' | 'profesor' | 'estudiante'
+import type { Profesor } from '../types/models'
 
 type UsuarioActual = {
-  rol: Rol
+  rol: 'login' | 'profesor'
   profesor?: Profesor
-  estudiante?: Estudiante
 }
 
 type AppState = {
   usuario: UsuarioActual
-  estudiantes: Estudiante[]
-  actividadesCompletadas: Set<string>
-  emocionActual: string | null
   setUsuario: (u: UsuarioActual) => void
-  setEstudiantes: (e: Estudiante[]) => void
-  agregarEstudiante: (e: Estudiante) => void
-  setEmocion: (e: string) => void
-  marcarActividadCompletada: (actividadId: string) => void
 }
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      usuario: { rol: 'login' },
-      estudiantes: [],
-      actividadesCompletadas: new Set(),
-      emocionActual: null,
-      setUsuario: (u) => set({ usuario: u }),
-      setEstudiantes: (e) => set({ estudiantes: e }),
-      agregarEstudiante: (e) => set({ estudiantes: [...get().estudiantes, e] }),
-      setEmocion: (e) => set({ emocionActual: e }),
-      marcarActividadCompletada: (id) => {
-        const s = get()
-        const nuevoSet = new Set(s.actividadesCompletadas)
-        nuevoSet.add(id)
-        set({ actividadesCompletadas: nuevoSet })
-      },
-    }),
-    {
-      name: 'steam-storage',
-      // La sesión docente no se guarda: el equipo se comparte con estudiantes.
-      version: 1,
-      migrate: (guardado) => ({
-        emocionActual: (guardado as { emocionActual?: string | null } | null)?.emocionActual ?? null,
-      }) as AppState,
-      partialize: (state) => ({
-        emocionActual: state.emocionActual,
-      }),
-    }
-  )
-)
+// La sesión docente no se guarda: el equipo se comparte con estudiantes.
+// Versiones anteriores dejaban aquí la sesión, incluido el PIN.
+try {
+  localStorage.removeItem('steam-storage')
+} catch {}
+
+export const useAppStore = create<AppState>()((set) => ({
+  usuario: { rol: 'login' },
+  setUsuario: (u) => set({ usuario: u }),
+}))

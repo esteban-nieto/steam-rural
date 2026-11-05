@@ -14,6 +14,12 @@ dist-ssr
 .env
 .env.local
 
+# Graphify y configuración local de asistentes de IA
+graphify-out/
+.graphify*
+.claude/
+CLAUDE.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

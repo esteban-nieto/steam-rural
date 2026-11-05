@@ -42,6 +42,6 @@ rustc .\launcher.rs -O -o .\app.exe
 Para volver a compilar el proyecto, instala las dependencias con `npm ci` y
 ejecuta `npm run tauri:build`.
 
-## Configuración
+## Datos
 
-Si se utilizan los servicios de Supabase, copia `.env.example` a `.env` y configura allí las variables requeridas. No publiques ese archivo ni sus credenciales.
+La aplicación funciona sin internet: los datos se guardan solo en cada equipo y se comparten por red local o con respaldos cifrados.

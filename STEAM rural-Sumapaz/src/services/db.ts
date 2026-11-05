@@ -1,5 +1,5 @@
 import { Dexie, type Table } from 'dexie'
-import type { Progreso, Estudiante, Emocion, Profesor } from '../types/models'
+import type { Progreso, Estudiante, Profesor } from '../types/models'
 
 export type Evaluacion = {
   id: string
@@ -74,10 +74,7 @@ const TABLAS_SINCRONIZADAS = ['estudiantes', 'progresos', 'evaluaciones', 'activ
 class SteamDB extends Dexie {
   progresos!: Table<Progreso, string>
   estudiantes!: Table<Estudiante, string>
-  progresosPendientes!: Table<Progreso, string>
-  estudiantesPendientes!: Table<Estudiante, string>
   evaluaciones!: Table<Evaluacion, string>
-  evaluacionesPendientes!: Table<Evaluacion, string>
   actividades!: Table<Actividad, string>
   profesores!: Table<Profesor, string>
   asistencias!: Table<RegistroAsistencia, string>
@@ -139,6 +136,24 @@ class SteamDB extends Dexie {
     // Registro de borrados, para que también se propaguen al sincronizar
     this.version(8).stores({
       eliminados: '&id, tabla',
+    })
+    // Las colas de envío a Supabase ya no se usan: lo que quede en ellas se conserva
+    // en las tablas principales antes de eliminarlas.
+    this.version(9).stores({}).upgrade(async (tx) => {
+      for (const [cola, principal] of [
+        ['progresosPendientes', 'progresos'],
+        ['estudiantesPendientes', 'estudiantes'],
+        ['evaluacionesPendientes', 'evaluaciones'],
+      ]) {
+        const pendientes = await tx.table(cola).toArray()
+        const existentes = await tx.table(principal).bulkGet(pendientes.map((p) => p.id))
+        await tx.table(principal).bulkPut(pendientes.filter((_, i) => !existentes[i]))
+      }
+    })
+    this.version(10).stores({
+      progresosPendientes: null,
+      estudiantesPendientes: null,
+      evaluacionesPendientes: null,
     })
     // Fecha de última modificación, usada para resolver conflictos entre equipos
     for (const tabla of TABLAS_SINCRONIZADAS) {
@@ -255,36 +270,8 @@ export async function guardarProgresoLocal(progreso: Progreso) {
   await db.progresos.put(progreso)
 }
 
-export async function guardarEstudianteLocal(estudiante: Estudiante) {
-  await db.estudiantes.put(estudiante)
-}
-
 export async function guardarEvaluacionLocal(ev: Evaluacion) {
   await db.evaluaciones.put(ev)
-}
-
-export async function obtenerProgresosPendientes(): Promise<Progreso[]> {
-  return await db.progresosPendientes.toArray().catch(() => [])
-}
-
-export async function obtenerEstudiantesPendientes(): Promise<Estudiante[]> {
-  return await db.estudiantesPendientes.toArray().catch(() => [])
-}
-
-export async function obtenerEvaluacionesPendientes(): Promise<Evaluacion[]> {
-  return await db.evaluacionesPendientes.toArray().catch(() => [])
-}
-
-export async function limpiarProgresosEnviados(ids: string[]) {
-  await db.progresosPendientes.bulkDelete(ids).catch(() => {})
-}
-
-export async function limpiarEstudiantesEnviados(ids: string[]) {
-  await db.estudiantesPendientes.bulkDelete(ids).catch(() => {})
-}
-
-export async function limpiarEvaluacionesEnviadas(ids: string[]) {
-  await db.evaluacionesPendientes.bulkDelete(ids).catch(() => {})
 }
 
 // --- Perfil Local de Profesor ---
@@ -497,5 +484,4 @@ export function guardarCursos(profesorId: string, cursos: string[]) {
   localStorage.setItem(claveCursos(profesorId), JSON.stringify(cursos))
 }
 
-export const EMOCIONES: Emocion[] = ['feliz', 'contento', 'neutro', 'triste', 'enfado']
 

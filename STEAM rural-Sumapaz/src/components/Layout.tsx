@@ -1,18 +1,15 @@
 import type { ReactNode } from 'react'
-import { SyncIndicator } from './SyncIndicator'
 
 export function Layout({
   children,
   title,
   onBack,
   rightAction,
-  hideSync,
 }: {
   children: ReactNode
   title?: string
   onBack?: () => void
   rightAction?: ReactNode
-  hideSync?: boolean
 }) {
   return (
     <div className="min-h-screen bg-paper">
@@ -38,7 +35,6 @@ export function Layout({
           </div>
           <div className="flex items-center gap-3">
             {title && <span className="font-display font-semibold text-paramo text-sm hidden md:block">{title}</span>}
-            {!hideSync && <SyncIndicator />}
             {rightAction}
           </div>
         </div>

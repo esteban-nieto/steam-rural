@@ -940,7 +940,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   return (
     <Layout
       title="Panel Profesor"
-      hideSync={true}
       rightAction={
         onCerrarSesion && (
           <button
