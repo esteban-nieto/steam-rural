@@ -1,10 +1,10 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "STEAM Rural - Sumapaz: software educativo para talleres de robótica creativa"
+authors = ["Gaddiel Esteban Nieto Rojas", "Juan David Zacipa Garcia"]
 license = ""
-repository = ""
+repository = "https://github.com/esteban-nieto/steam-rural"
 edition = "2024"
 rust-version = "1.95"
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Layout } from '../../components/Layout'
 import { RegistroFinalActividad } from '../../components/RegistroFinalActividad'
+import { FileText, PartyPopper } from 'lucide-react'
 
 const base = import.meta.env.BASE_URL
 const PASOS_EJEMPLO = [
@@ -55,7 +56,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
               }}
             />
             <div className="hidden absolute inset-0 items-center justify-center flex-col gap-2">
-              <span className="text-4xl">📄</span>
+              <span className="text-4xl"><FileText className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
               <span className="text-[11px] font-bold tracking-widest uppercase text-ink/30">Imagen no disponible</span>
             </div>
           </div>
@@ -68,7 +69,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
             </button>
             {paso === PASOS_EJEMPLO.length - 1 ? (
               <button onClick={marcar} className={`px-6 py-2.5 rounded-full font-bold text-[13px] tracking-wide transition ${completados.has(paso) ? 'bg-mist text-paramo border border-moss/20' : 'bg-paramo text-white shadow-paper hover:bg-[#1e3a0f]'}`}>
-                {completados.has(paso) ? '✓ Completado' : 'Completar'}
+                {completados.has(paso) ? 'Completado' : 'Completar'}
               </button>
             ) : (
               <button onClick={() => setPaso(paso + 1)} className="px-5 py-2.5 rounded-full border border-[#E8E0D0] bg-white text-[13px] font-semibold hover:bg-paper">
@@ -81,7 +82,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
 
       {progreso === 100 && (
         <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 mt-4 text-center paper-texture">
-          <p className="text-3xl mb-2">🎉</p>
+          <p className="text-3xl mb-2"><PartyPopper className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></p>
           <h3 className="font-display font-bold text-[18px] text-ink">¡Muy bien!</h3>
           <p className="text-[14px] leading-relaxed text-ink mt-2">Ahora decóralo como tu animal favorito y podrás llevarlo siempre en tu cuaderno.</p>
           <RegistroFinalActividad actividadId="origami-conejo" totalPasos={PASOS_EJEMPLO.length} />

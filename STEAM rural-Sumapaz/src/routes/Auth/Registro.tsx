@@ -3,6 +3,7 @@ import { adoptarDatosSinDueno, guardarProfesorLocal, obtenerProfesores } from '.
 import { PIN_MINIMO, crearCredencial, sinCredenciales } from '../../services/auth'
 import { useAppStore } from '../../stores/app.store'
 import type { Profesor } from '../../types/models'
+import { UserPlus } from 'lucide-react'
 
 const claseInput =
   'w-full bg-paper border border-[#E8E0D0] rounded-full px-4 py-2.5 text-[14px] outline-none focus:bg-white focus:border-paramo/30'
@@ -47,7 +48,6 @@ export function Registro({ onSuccess, onIrALogin }: { onSuccess: () => void; onI
         nombre: nombreLimpio,
         email: emailLimpio || undefined,
         ...(await crearCredencial(pin)),
-        cursoActual: '3A',
         created_at: new Date().toISOString(),
       }
       await guardarProfesorLocal(nuevo)
@@ -63,7 +63,7 @@ export function Registro({ onSuccess, onIrALogin }: { onSuccess: () => void; onI
     <div className="w-full max-w-sm bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 paper-texture">
       <div className="text-center mb-6">
         <div className="w-10 h-10 rounded-xl bg-clay text-white flex items-center justify-center mx-auto mb-3">
-          ✦
+          <UserPlus className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
         </div>
         <h2 className="font-display font-bold text-[20px] text-ink">Crear cuenta docente</h2>
         <p className="text-[12px] text-ink/50">Tus datos se guardan solo en este equipo</p>

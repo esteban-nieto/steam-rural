@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react'
 import { adoptarDatosSinDueno, guardarProfesorLocal, obtenerProfesores } from '../../services/db'
 import {
@@ -38,7 +37,6 @@ export function Login({ onSuccess, onRegistrar }: { onSuccess: () => void; onReg
     const claveCorta = `La contraseña o PIN debe tener al menos ${PIN_MINIMO} caracteres.`
     const profesores = await obtenerProfesores()
 
-    // Si ya existe un profesor guardado en este equipo
     if (profesores.length > 0) {
       const buscado = inputNombre.toLowerCase()
       const profesor = profesores.find(

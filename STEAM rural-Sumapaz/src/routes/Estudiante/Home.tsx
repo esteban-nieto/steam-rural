@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '../../components/Card'
 import { Layout } from '../../components/Layout'
 import { obtenerActividadesLocales, type Actividad } from '../../services/db'
+import { Film } from 'lucide-react'
 
 export function EstudianteHome({
   onSelectOrigami,
@@ -24,7 +25,6 @@ export function EstudianteHome({
 
   return (
     <Layout title="Actividades" onBack={onBack}>
-      {/* Banner Historia de Pueblo Soleado */}
       <div className="max-w-2xl mx-auto mb-6">
         <button
           onClick={onSelectHistoria}
@@ -32,7 +32,7 @@ export function EstudianteHome({
         >
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition">
-              🎬
+              <Film className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
             </div>
             <div>
               <span className="text-[10px] font-bold tracking-[0.14em] uppercase bg-white/20 px-2.5 py-0.5 rounded-full text-white inline-block mb-1">

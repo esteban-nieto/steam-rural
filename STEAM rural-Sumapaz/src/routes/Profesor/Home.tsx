@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import type { Estudiante } from '../../types/models'
@@ -22,8 +21,15 @@ import {
   type Actividad,
   type PasoActividad,
 } from '../../services/db'
+import type { Evaluacion } from '../../services/db'
+import { Check, ClipboardList, Download, FilePlus, Film, Image, ImagePlus, ListOrdered, Paperclip, Pencil, RefreshCw, Save, Settings, Wifi, X } from 'lucide-react'
 
-const ACTIVIDADES_BASE = [
+type ActividadLista = { id: string; label: string; pasos: number; esDinamica?: boolean; esPropia?: boolean }
+
+// Las evaluaciones de versiones anteriores podían traer estos campos.
+type EvaluacionGuardada = Evaluacion & { observaciones?: Record<string, string>; created_at?: string }
+
+const ACTIVIDADES_BASE: ActividadLista[] = [
   { id: 'origami-conejo', label: 'Actividad 1- Origami conejo', pasos: 11 },
   { id: 'molino-casa', label: 'Actividad 2- Molino + Casa', pasos: 20 },
 ]
@@ -69,13 +75,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   // App solo muestra este panel con sesión docente activa
   const profesorId = useAppStore((s) => s.usuario.profesor?.id) as string
   const claveCursoActivo = `steam_curso_activo:${profesorId}`
-  const [cursos, setCursos] = useState<string[]>(() => {
-    const guardados = obtenerCursosGuardados(profesorId)
-    return guardados.length ? guardados : ['3A', '4B']
-  })
+  const [cursos, setCursos] = useState<string[]>(() => obtenerCursosGuardados(profesorId))
   const [curso, setCurso] = useState(() => {
     const activo = localStorage.getItem(claveCursoActivo)
-    return activo && cursos.includes(activo) ? activo : cursos[0]
+    return activo && cursos.includes(activo) ? activo : (cursos[0] ?? '')
   })
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [nombre, setNombre] = useState('')
@@ -100,7 +103,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   const [modalAsistenciaOpen, setModalAsistenciaOpen] = useState(false)
   const [menuAccionesOpen, setMenuAccionesOpen] = useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
-  const criteriosInicialRef = React.useRef(true)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -149,6 +151,11 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
 
   const agregar = async () => {
     if (!nombre.trim()) return
+    if (!curso) {
+      setMensaje('Primero crea un curso')
+      setTimeout(() => setMensaje(''), 2500)
+      return
+    }
     const tempId = crypto.randomUUID()
     const nuevo: any = {
       id: tempId,
@@ -177,10 +184,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
   }
 
   const eliminarCurso = async (cursoAEliminar: string) => {
-    if (cursos.length <= 1) {
-      alert('Debe existir al menos un curso.')
-      return
-    }
     const confirmar = confirm(
       `¿Deseas eliminar el curso "${cursoAEliminar}"? También se borrarán sus estudiantes, progresos, rúbricas y asistencias. Esta acción no se puede deshacer.`
     )
@@ -197,9 +200,9 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     const nuevosCursos = cursos.filter((c) => c !== cursoAEliminar)
     setCursos(nuevosCursos)
     if (curso === cursoAEliminar) {
-      setCurso(nuevosCursos[0])
+      setCurso(nuevosCursos[0] ?? '')
     }
-    setMensaje(`✓ Curso ${cursoAEliminar} eliminado`)
+    setMensaje(`Curso ${cursoAEliminar} eliminado`)
     setTimeout(() => setMensaje(''), 2500)
   }
 
@@ -287,11 +290,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     setNombreNuevaAct('')
     setPortadaNuevaAct(null)
     cambiarCantidadPasos(3)
-    setMensaje('✓ Nueva actividad creada correctamente')
+    setMensaje('Nueva actividad creada correctamente')
     setTimeout(() => setMensaje(''), 2500)
   }
 
-  const [modalVideoOpen, setModalVideoOpen] = useState(false)
   const [nombreActVideo, setNombreActVideo] = useState('')
   const [portadaActVideo, setPortadaActVideo] = useState<string | null>(null)
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null)
@@ -391,11 +393,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
 
     await guardarActividadLocal(nueva)
     await cargarActividadesLocales()
-    setModalVideoOpen(false)
     setNombreActVideo('')
     setVideoFileUrl(null)
     setPortadaActVideo(null)
-    setMensaje('✓ Actividad de video por pasos creada correctamente')
+    setMensaje('Actividad de video por pasos creada correctamente')
     setTimeout(() => setMensaje(''), 2500)
   }
 
@@ -435,10 +436,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       await db.evaluaciones.put(evLocal)
     } catch (err) {
       console.error('Error guardando rúbrica:', err)
-      setMensajeRubrica('⚠ No se pudo guardar la rúbrica. Inténtalo de nuevo.')
+      setMensajeRubrica('No se pudo guardar la rúbrica. Inténtalo de nuevo.')
       return
     }
-    setMensajeRubrica('✓ Rúbrica guardada localmente')
+    setMensajeRubrica('Rúbrica guardada localmente')
 
     setHistorialEval((p) => {
       const filtrado = p.filter((x: any) => x.id !== evId)
@@ -532,11 +533,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       3: 'Competente',
       4: 'Destacado',
     }
-    const todos = Object.values(criteriosMap || {}).filter((v) => v != null && v !== '') as number[]
+    const todos = Object.values(criteriosMap || {}).filter((v) => v != null) as number[]
     const promGeneral = todos.length ? (todos.reduce((a, b) => a + Number(b), 0) / todos.length).toFixed(1) : '—'
     const isPost = tipoLabel === 'POST'
     const accent = isPost ? '#2D5016' : '#C47A3C'
-    const accentSoft = isPost ? '#E8F0E8' : '#F8EDE3'
     const fechaTxt = fechaDoc
       ? new Date(`${fechaDoc}T12:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
       : fechaDoc
@@ -544,7 +544,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
     const areasHtml = RUBRICA.map((area) => {
       const areaKey = area.area.split('(')[1]?.replace(')', '') || area.area
       const obsArea = parsedObs[areaKey] || ''
-      const vals = area.items.map((it) => criteriosMap?.[it.key]).filter((v) => v != null && v !== '') as number[]
+      const vals = area.items.map((it) => criteriosMap?.[it.key]).filter((v) => v != null) as number[]
       const promArea = vals.length ? (vals.reduce((a, b) => a + Number(b), 0) / vals.length).toFixed(1) : '—'
       const itemsHtml = area.items.map((it) => {
         const n = criteriosMap?.[it.key]
@@ -644,8 +644,8 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
             generarHtmlRubrica({
               tipoLabel: 'PRE',
               criteriosMap: evPre.criterios || {},
-              obsMap: evPre.observaciones || evPre.observacion || {},
-              fechaDoc: (evPre.fecha || evPre.created_at || '').split('T')[0],
+              obsMap: (evPre as EvaluacionGuardada).observaciones || evPre.observacion || {},
+              fechaDoc: (evPre.fecha || ((evPre as EvaluacionGuardada).created_at ?? '') || '').split('T')[0],
               estNombre: est.nombre,
               estCurso: est.curso || curso,
             })
@@ -658,8 +658,8 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
             generarHtmlRubrica({
               tipoLabel: 'POST',
               criteriosMap: evPost.criterios || {},
-              obsMap: evPost.observaciones || evPost.observacion || {},
-              fechaDoc: (evPost.fecha || evPost.created_at || '').split('T')[0],
+              obsMap: (evPost as EvaluacionGuardada).observaciones || evPost.observacion || {},
+              fechaDoc: (evPost.fecha || ((evPost as EvaluacionGuardada).created_at ?? '') || '').split('T')[0],
               estNombre: est.nombre,
               estCurso: est.curso || curso,
             })
@@ -890,66 +890,29 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
           return [evLocal, ...filtrado]
         })
       }
-      setMensaje('✓ Registro guardado localmente')
+      setMensaje('Registro guardado localmente')
       setHistorial((prev) => [progreso, ...prev])
     } catch (err) {
       console.error('Error guardando registro:', err)
-      setMensaje('⚠ No se pudo guardar el registro. Inténtalo de nuevo.')
+      setMensaje('No se pudo guardar el registro. Inténtalo de nuevo.')
     }
     setGuardando(false)
     setTimeout(() => setMensaje(''), 2500)
   }
 
-  const abrirHistorial = async (h: any) => {
-    criteriosInicialRef.current = true
-    setActividad(h.actividad_id || 'origami-conejo')
-    setPasoHasta(h.pasos_completados?.length || 0)
-    setEmocionInicio(h.emocion_inicio || undefined)
-    setEmocionFin(h.emocion_fin || undefined)
-    if (h.actividad_id === 'molino-casa' || h.actividad_id === 'molino-casa-post' || h.criterios) {
-      try {
-        const fechaKey = (h.fecha || h.created_at).split('T')[0]
-        const localE = await db.evaluaciones.where('estudiante_id').equals(h.estudiante_id).toArray()
-        const found = localE.find((e: any) => e.fecha === fechaKey)
-        if (found) {
-          setCriterios((found as any).criterios || {})
-          const obs = (found as any).observaciones || (found as any).observacion
-          try {
-            setObservaciones(obs ? (typeof obs === 'string' ? JSON.parse(obs) : obs) : {})
-          } catch {
-            setObservaciones({})
-          }
-        } else {
-          setCriterios({})
-          setObservaciones({})
-        }
-      } catch {
-        setCriterios({})
-        setObservaciones({})
-      }
-    } else {
-      setCriterios({})
-      setObservaciones({})
-    }
-    setTimeout(() => {
-      criteriosInicialRef.current = false
-    }, 300)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   return (
     <Layout
       title="Panel Profesor"
+      onBack={onCerrarSesion}
       rightAction={
         onCerrarSesion && (
           <button
             type="button"
             onClick={onCerrarSesion}
-            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm transition hover:scale-105"
+            className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm transition hover:scale-105"
             title="Cerrar sesión del docente y volver al inicio"
           >
-            <span>🚪</span>
-            <span>Cerrar sesión</span>
+            Cerrar sesión
           </button>
         )
       }
@@ -957,13 +920,16 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2.5 py-1 rounded-full">
-            {estudiantes.length} estudiantes
+            {estudiantes.length} {estudiantes.length === 1 ? 'estudiante' : 'estudiantes'}
           </span>
-          <span className="text-[12px] text-ink/50">en</span>
-          <span className="font-display font-bold text-ink">{curso}</span>
+          {curso && (
+            <>
+              <span className="text-[12px] text-ink/50">en</span>
+              <span className="font-display font-bold text-ink">{curso}</span>
+            </>
+          )}
         </div>
 
-        {/* Menú Desplegable de Opciones y Herramientas */}
         <div className="relative" ref={menuRef}>
           <button
             type="button"
@@ -971,7 +937,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
             className="flex items-center gap-2 bg-white border border-[#E8E0D0] hover:border-paramo text-ink font-bold text-[13px] px-4 py-2 rounded-full shadow-paper hover:shadow transition"
             aria-expanded={menuAccionesOpen}
           >
-            <span>⚙️</span>
+            <span><Settings className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
             <span>Opciones del Curso</span>
             <span className="text-xs text-ink/40">▼</span>
           </button>
@@ -991,7 +957,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
               >
                 <span className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
-                  📋
+                  <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                 </span>
                 <div>
                   <span className="block leading-tight font-bold">Llamar a Lista</span>
@@ -1009,7 +975,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink disabled:opacity-40 disabled:pointer-events-none group"
               >
                 <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
-                  📥
+                  <Download className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                 </span>
                 <div>
                   <span className="block leading-tight font-bold">
@@ -1029,7 +995,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
               >
                 <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
-                  ✨
+                  <FilePlus className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                 </span>
                 <div>
                   <span className="block leading-tight font-bold">Crear Actividad</span>
@@ -1046,7 +1012,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-paper transition text-[13px] font-semibold text-ink group"
               >
                 <span className="w-7 h-7 rounded-lg bg-orange-50 text-terracota flex items-center justify-center text-sm shadow-xs group-hover:scale-105 transition">
-                  📡
+                  <Wifi className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                 </span>
                 <div>
                   <span className="block leading-tight font-bold">Sincronizar Sala</span>
@@ -1084,7 +1050,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 title={`Eliminar curso ${c}`}
                 aria-label={`Eliminar curso ${c}`}
               >
-                ✕
+                <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -1121,7 +1087,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         ))}
         {estudiantes.length === 0 && (
           <div className="bg-white rounded-paper border border-dashed border-[#E8E0D0] p-10 text-center">
-            <p className="text-2xl mb-2">📋</p><p className="font-display font-bold text-ink">Sin estudiantes en {curso}</p><p className="text-[13px] text-ink/50">Agrega el primer nombre arriba.</p>
+            <p className="text-2xl mb-2"><ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></p><p className="font-display font-bold text-ink">{curso ? `Sin estudiantes en ${curso}` : 'Aún no tienes cursos'}</p><p className="text-[13px] text-ink/50">{curso ? 'Agrega el primer nombre arriba.' : 'Escribe el nombre del curso y pulsa «+ Curso».'}</p>
           </div>
         )}
       </div>
@@ -1183,7 +1149,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                           className="absolute top-2 right-2 text-ink/30 hover:text-red-500 font-bold p-1 text-[13px]"
                           title="Eliminar actividad"
                         >
-                          ✕
+                          <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                         </button>
                       )}
                     </div>
@@ -1351,7 +1317,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                           }}
                           className="w-full bg-white border border-terracota text-terracota rounded-full py-1.5 text-[12px] font-bold hover:bg-terracota hover:text-white transition flex items-center justify-center gap-1"
                         >
-                          📋 Ver Rúbrica PRE
+                          <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Ver Rúbrica PRE
                         </button>
                       </div>
 
@@ -1379,7 +1345,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                           }}
                           className="w-full bg-white border border-paramo text-paramo rounded-full py-1.5 text-[12px] font-bold hover:bg-paramo hover:text-white transition flex items-center justify-center gap-1"
                         >
-                          📋 Ver Rúbrica POST
+                          <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Ver Rúbrica POST
                         </button>
                       </div>
                     </div>
@@ -1417,7 +1383,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                   }}
                   className="px-3.5 py-2 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold text-ink hover:bg-mist transition flex items-center gap-1"
                 >
-                  ✏️ Editar
+                  <Pencil className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Editar
                 </button>
                 <button
                   type="button"
@@ -1620,7 +1586,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     tipoRubrica === 'post' ? 'bg-paramo hover:bg-[#1e3a0f]' : 'bg-terracota hover:bg-[#a65e2a]'
                   }`}
                 >
-                  💾 Guardar Rúbrica {tipoRubrica.toUpperCase()}
+                  <Save className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Guardar Rúbrica {tipoRubrica.toUpperCase()}
                 </button>
                 <button
                   type="button"
@@ -1635,15 +1601,13 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         </div>
       )}
 
-      {/* MODAL ÚNICO DE CREACIÓN DE ACTIVIDADES */}
       {modalActividadOpen && (
         <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-[#E8E0D0] overflow-hidden my-auto">
-            {/* Header unificado */}
             <div className="bg-slateProfesor text-white px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                  <span>✨</span>
+                  <span><FilePlus className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                   <span>
                     {modoCreacionActividad === 'selector'
                       ? 'Crear Nueva Actividad'
@@ -1665,11 +1629,10 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                 onClick={() => setModalActividadOpen(false)}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold"
               >
-                ✕
+                <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
               </button>
             </div>
 
-            {/* VISTA 1: SELECTOR DE OPCIONES */}
             {modoCreacionActividad === 'selector' && (
               <div className="p-8 space-y-6">
                 <div className="text-center max-w-md mx-auto">
@@ -1688,7 +1651,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     className="group text-left p-6 rounded-2xl border-2 border-[#E8E0D0] hover:border-paramo hover:bg-mist/30 transition-all flex flex-col gap-3 shadow-sm hover:shadow"
                   >
                     <div className="w-12 h-12 rounded-xl bg-paramo/10 text-paramo flex items-center justify-center text-2xl group-hover:scale-105 transition">
-                      📸
+                      <ImagePlus className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                     </div>
                     <div>
                       <h5 className="font-display font-bold text-ink text-base">
@@ -1709,7 +1672,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     className="group text-left p-6 rounded-2xl border-2 border-[#E8E0D0] hover:border-terracota hover:bg-terracota/5 transition-all flex flex-col gap-3 shadow-sm hover:shadow"
                   >
                     <div className="w-12 h-12 rounded-xl bg-terracota/10 text-terracota flex items-center justify-center text-2xl group-hover:scale-105 transition">
-                      🎬
+                      <Film className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                     </div>
                     <div>
                       <h5 className="font-display font-bold text-ink text-base">
@@ -1727,7 +1690,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
               </div>
             )}
 
-            {/* VISTA 2: CREACIÓN PASO POR PASO */}
             {modoCreacionActividad === 'pasos' && (
               <>
                 <div className="p-6 overflow-y-auto space-y-6 flex-1">
@@ -1757,7 +1719,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     />
                   </div>
 
-                  {/* Portada de la actividad */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
                       Portada (imagen de presentación)
@@ -1775,15 +1736,15 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                         </div>
                         <button
                           type="button"
-                          onClick={() => setPortadaNuevaAct(undefined)}
+                          onClick={() => setPortadaNuevaAct(null)}
                           className="text-xs text-red-500 font-bold hover:underline shrink-0"
                         >
-                          ✕ Quitar
+                          <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Quitar
                         </button>
                       </div>
                     ) : (
                       <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl p-4 flex items-center gap-3 bg-white transition">
-                        <span className="text-2xl">🖼️</span>
+                        <span className="text-2xl"><Image className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                         <div>
                           <p className="text-xs font-bold text-ink">Subir imagen de portada</p>
                           <p className="text-[11px] text-ink/50">JPG, PNG o WebP recomendado</p>
@@ -1833,10 +1794,9 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     </div>
                   </div>
 
-                  {/* Lista de pasos */}
                   <div className="space-y-4 pt-2">
                     <h4 className="font-display font-bold text-ink text-sm flex items-center gap-2">
-                      <span>📝</span>
+                      <span><ListOrdered className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                       <span>Detalle de cada paso</span>
                     </h4>
 
@@ -1876,7 +1836,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                           </label>
                           <div className="flex items-center gap-3">
                             <label className="cursor-pointer bg-white border border-dashed border-[#E8E0D0] hover:border-paramo rounded-xl px-4 py-2 text-xs font-semibold text-ink/70 hover:text-paramo transition flex items-center gap-2 shadow-sm">
-                              <span>📎</span>
+                              <span><Paperclip className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                               <span>{pasoItem.multimedia ? 'Cambiar archivo' : 'Subir foto o video'}</span>
                               <input
                                 type="file"
@@ -1893,7 +1853,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                               <div className="flex items-center gap-2 bg-mist px-3 py-1.5 rounded-lg border border-moss/20">
                                 {pasoItem.tipoMultimedia === 'video' ? (
                                   <span className="text-xs font-medium text-moss flex items-center gap-1">
-                                    🎬 Video cargado
+                                    <Film className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Video cargado
                                   </span>
                                 ) : (
                                   <img
@@ -1915,7 +1875,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                                   }
                                   className="text-xs text-red-500 font-bold hover:underline ml-1"
                                 >
-                                  ✕ Quitar
+                                  <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Quitar
                                 </button>
                               </div>
                             )}
@@ -1939,13 +1899,12 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     onClick={guardarNuevaActividad}
                     className="px-6 py-2.5 rounded-full bg-paramo text-white text-xs font-bold hover:bg-[#1e3a0f] transition shadow-paper"
                   >
-                    ✓ Guardar Actividad
+                    <Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Guardar Actividad
                   </button>
                 </div>
               </>
             )}
 
-            {/* VISTA 3: DIVIDIR VIDEO EN PASOS */}
             {modoCreacionActividad === 'video' && (
               <>
                 <div ref={modalScrollContainerRef} className="p-6 overflow-y-auto space-y-6 flex-1 scroll-smooth">
@@ -1975,7 +1934,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     />
                   </div>
 
-                  {/* Portada de la actividad */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-ink/70 mb-1.5">
                       Portada (imagen de presentación)
@@ -1993,15 +1951,15 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                         </div>
                         <button
                           type="button"
-                          onClick={() => setPortadaActVideo(undefined)}
+                          onClick={() => setPortadaActVideo(null)}
                           className="text-xs text-red-500 font-bold hover:underline shrink-0"
                         >
-                          ✕ Quitar
+                          <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Quitar
                         </button>
                       </div>
                     ) : (
                       <label className="cursor-pointer border-2 border-dashed border-[#E8E0D0] hover:border-terracota rounded-xl p-4 flex items-center gap-3 bg-white transition">
-                        <span className="text-2xl">🖼️</span>
+                        <span className="text-2xl"><Image className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                         <div>
                           <p className="text-xs font-bold text-ink">Subir imagen de portada</p>
                           <p className="text-[11px] text-ink/50">JPG, PNG o WebP recomendado</p>
@@ -2022,7 +1980,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     )}
                   </div>
 
-                  {/* Subida y Previsualización del Video con Drag & Drop */}
                   <div
                     className={`p-4 rounded-2xl border transition-colors ${
                       isDraggingVideo
@@ -2063,7 +2020,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                             : 'border-[#E8E0D0] hover:border-terracota bg-white'
                         }`}
                       >
-                        <span className="text-4xl pointer-events-none">🎬</span>
+                        <span className="text-4xl pointer-events-none"><Film className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                         <span className="text-sm font-bold text-ink pointer-events-none">
                           Arrastra tu video aquí o haz clic para seleccionarlo
                         </span>
@@ -2102,7 +2059,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                             <span className="text-ink/40">({Math.round(videoDuracion)} segundos)</span>
                           </span>
                           <label className="cursor-pointer text-terracota font-bold hover:underline flex items-center gap-1">
-                            <span>🔄</span>
+                            <span><RefreshCw className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                             <span>Cambiar video</span>
                             <input
                               type="file"
@@ -2119,7 +2076,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     )}
                   </div>
 
-                  {/* Selector de número de pasos */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold uppercase tracking-wider text-ink/70">
@@ -2149,7 +2105,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     </div>
                   </div>
 
-                  {/* Intervalos por paso en formato MM:SS */}
                   <div className="space-y-4 pt-1">
                     <div className="flex items-center justify-between">
                       <h4 className="font-display font-bold text-ink text-sm">
@@ -2173,7 +2128,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                             <button
                               type="button"
                               onClick={() => {
-                                // Auto-scroll al reproductor de video arriba
                                 if (modalScrollContainerRef.current) {
                                   modalScrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
                                 }
@@ -2284,7 +2238,7 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
                     onClick={guardarActividadVideoSegmentado}
                     className="px-6 py-2.5 rounded-full bg-terracota text-white text-xs font-bold hover:bg-[#a65e2a] transition shadow-paper"
                   >
-                    ✓ Guardar Video en Pasos
+                    <Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Guardar Video en Pasos
                   </button>
                 </div>
               </>
@@ -2293,7 +2247,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         </div>
       )}
 
-      {/* Modal de sincronización P2P en el aula */}
       <ModalP2PSync
         isOpen={modalP2pOpen}
         onClose={() => setModalP2pOpen(false)}
@@ -2304,7 +2257,6 @@ export function ProfesorHome({ onCerrarSesion }: { onCerrarSesion?: () => void }
         }}
       />
 
-      {/* Modal de Control de Asistencia y exportación Excel */}
       <ModalAsistencia
         isOpen={modalAsistenciaOpen}
         onClose={() => setModalAsistenciaOpen(false)}

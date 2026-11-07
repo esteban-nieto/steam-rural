@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react'
 import { Login } from './routes/Auth/Login'
 import { Registro } from './routes/Auth/Registro'
@@ -10,6 +9,7 @@ import { ActividadDinamica } from './routes/Estudiante/ActividadDinamica'
 import { HistoriaPueblo } from './routes/HistoriaPueblo'
 import { useAppStore } from './stores/app.store'
 import type { Actividad } from './services/db'
+import { ClipboardList, Film, Sprout } from 'lucide-react'
 
 type View =
   | 'selector'
@@ -85,12 +85,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <nav className="h-[56px] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-lg bg-paramo flex items-center justify-center text-white"
-                aria-hidden="true"
-              >
-                ◈
-              </div>
+              <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" aria-hidden="true" className="w-8 h-8 rounded-full" />
               <span className="font-display font-bold text-ink">STEAM Rural</span>
               <span className="hidden sm:inline text-[10px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2 py-1 rounded-full">
                 Sumapaz
@@ -124,7 +119,7 @@ export default function App() {
                   className="group bg-white rounded-paper border-2 border-moss/30 p-8 text-center hover:border-moss hover:shadow-paper transition focus-visible:ring-2 focus-visible:ring-terracota"
                 >
                   <div className="w-16 h-16 rounded-2xl bg-mist text-moss text-[32px] flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition">
-                    🌱
+                    <Sprout className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                   </div>
                   <h2 className="font-display font-bold text-[22px] text-ink mb-1">
                     Soy estudiante
@@ -139,7 +134,7 @@ export default function App() {
                   className="group bg-white rounded-paper border-2 border-paramo/20 p-8 text-center hover:border-paramo hover:shadow-paper transition focus-visible:ring-2 focus-visible:ring-terracota"
                 >
                   <div className="w-16 h-16 rounded-2xl bg-[#E8E0D0]/50 text-paramo text-[32px] flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition">
-                    📋
+                    <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                   </div>
                   <h2 className="font-display font-bold text-[22px] text-ink mb-1">
                     Soy docente
@@ -150,7 +145,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Sección de Historia de Pueblo Soleado */}
               <div className="mt-6">
                 <button
                   onClick={() => pushView('historia')}
@@ -158,7 +152,7 @@ export default function App() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition">
-                      🎬
+                      <Film className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                     </div>
                     <div>
                       <span className="text-[10px] font-bold tracking-[0.14em] uppercase bg-white/20 px-2 py-0.5 rounded-full text-white inline-block mb-1">

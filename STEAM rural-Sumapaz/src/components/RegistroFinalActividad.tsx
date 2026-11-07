@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { EmotionPicker } from './EmotionPicker'
 import { db, guardarProgresoLocal } from '../services/db'
 import type { Estudiante } from '../types/models'
+import { Check } from 'lucide-react'
 
 /** Al terminar una actividad, el estudiante indica quién es y cómo se siente. */
 export function RegistroFinalActividad({ actividadId, totalPasos }: { actividadId: string; totalPasos: number }) {
@@ -40,7 +41,7 @@ export function RegistroFinalActividad({ actividadId, totalPasos }: { actividadI
   }
 
   if (estado === 'guardado') {
-    return <p className="text-[13px] font-semibold text-paramo mt-3">✓ ¡Registrado! Tu profe verá tu progreso.</p>
+    return <p className="text-[13px] font-semibold text-paramo mt-3"><Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> ¡Registrado! Tu profe verá tu progreso.</p>
   }
 
   return (

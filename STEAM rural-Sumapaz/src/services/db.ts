@@ -175,7 +175,6 @@ class SteamDB extends Dexie {
 
 export const db = new SteamDB()
 
-// --- Actividades ---
 export async function guardarActividadLocal(act: Actividad) {
   await db.actividades.put(act).catch((err) => console.error('Error guardando actividad:', err))
 }
@@ -265,7 +264,6 @@ export async function restaurarCurso(curso: string, profesorId: string) {
   await db.eliminados.delete(`cursos:${profesorId}:${curso}`)
 }
 
-// --- Progresos, Estudiantes y Evaluaciones ---
 export async function guardarProgresoLocal(progreso: Progreso) {
   await db.progresos.put(progreso)
 }
@@ -274,7 +272,6 @@ export async function guardarEvaluacionLocal(ev: Evaluacion) {
   await db.evaluaciones.put(ev)
 }
 
-// --- Perfil Local de Profesor ---
 export async function guardarProfesorLocal(profesor: Profesor) {
   await db.profesores.put(profesor).catch((err) => console.error('Error guardando profesor:', err))
 }
@@ -283,7 +280,6 @@ export async function obtenerProfesores(): Promise<Profesor[]> {
   return await db.profesores.toArray()
 }
 
-// --- Asistencias ---
 export async function guardarAsistenciasLocal(registros: RegistroAsistencia[]) {
   if (!registros.length) return
   await db.asistencias.bulkPut(registros).catch((err) => console.error('Error guardando asistencias:', err))
@@ -462,10 +458,9 @@ export async function importarBaseDatosCompleta(datos: any, profesorId: string):
   // La lista de cursos vive en localStorage: se completa para que los importados se vean.
   const delRespaldo: string[] = Array.isArray(datos.cursos) ? datos.cursos.filter(esTexto) : []
   const actuales = leerCursosGuardados(profesorId)
-  const base = actuales.length ? actuales : ['3A', '4B']
-  const cursos = [...new Set([...base, ...delRespaldo])].filter((c) => !cursosBorrados.has(c))
+  const cursos = [...new Set([...actuales, ...delRespaldo])].filter((c) => !cursosBorrados.has(c))
   const lista = [...new Set([...cursos, ...cursosAplicados])]
-  localStorage.setItem(claveCursos(profesorId), JSON.stringify(lista.length ? lista : base))
+  localStorage.setItem(claveCursos(profesorId), JSON.stringify(lista))
 
   return r
 }

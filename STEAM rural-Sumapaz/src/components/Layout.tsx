@@ -26,9 +26,7 @@ export function Layout({
               </button>
             )}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-paramo flex items-center justify-center text-white text-[14px]" aria-hidden="true">
-                ◈
-              </div>
+              <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" aria-hidden="true" className="w-8 h-8 rounded-full" />
               <span className="font-display font-bold text-[17px] tracking-tight text-ink">STEAM Rural</span>
               <span className="hidden sm:inline text-[10px] font-bold tracking-[0.14em] uppercase text-white bg-paramo px-2 py-1 rounded-full">Sumapaz</span>
             </div>

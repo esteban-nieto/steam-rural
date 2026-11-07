@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { RegistroFinalActividad } from '../../components/RegistroFinalActividad'
 import { Layout } from '../../components/Layout'
+import { Check, PartyPopper } from 'lucide-react'
 
 type Checkpoint = { id: number; start: number; end: number; label: string }
 
@@ -174,7 +175,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
             )}
             {idx === total - 1 ? (
               completado ? (
-                <span className="px-6 py-2.5 rounded-full bg-mist text-paramo border border-moss/20 font-bold text-[13px]">✓ Completado</span>
+                <span className="px-6 py-2.5 rounded-full bg-mist text-paramo border border-moss/20 font-bold text-[13px]"><Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Completado</span>
               ) : (
                 <button
                   onClick={() => {
@@ -201,7 +202,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
 
       {completado && (
         <div className="bg-white rounded-paper border border-[#E8E0D0] shadow-paper p-6 mt-4 text-center paper-texture">
-          <p className="text-3xl mb-2">🎉</p>
+          <p className="text-3xl mb-2"><PartyPopper className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></p>
           <h3 className="font-display font-bold text-[18px] text-ink">¡Molino y casa terminados!</h3>
           <p className="text-[13px] text-ink/60 mt-2">Así debe quedar tu proyecto:</p>
           <img src={`${import.meta.env.BASE_URL}videos/Portada.png`} alt="Molino y casa terminados - referencia final" className="w-full max-w-sm mx-auto mt-4 rounded-2xl border border-[#E8E0D0] object-contain" />

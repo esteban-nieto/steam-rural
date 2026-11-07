@@ -1,4 +1,3 @@
-// Modelo de datos y tipos base del sistema STEAM Rural (100% Local)
 
 export type Profesor = {
   id: string

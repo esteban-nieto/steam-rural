@@ -7,6 +7,7 @@ import {
   type RegistroAsistencia,
 } from '../services/db'
 import type { Estudiante } from '../types/models'
+import { CalendarDays, Check, ClipboardList, Download, FileSpreadsheet, ListOrdered, Save, X } from 'lucide-react'
 
 interface ModalAsistenciaProps {
   isOpen: boolean
@@ -25,7 +26,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
   const [mensaje, setMensaje] = useState('')
   const [tab, setTab] = useState<'pasar_lista' | 'exportar'>('pasar_lista')
 
-  // Para exportar rango de fechas
   const [modoExportar, setModoExportar] = useState<'dia_actual' | 'rango' | 'todas'>('dia_actual')
   const [fechaInicioExport, setFechaInicioExport] = useState<string>(() => new Date().toISOString().split('T')[0])
   const [fechaFinExport, setFechaFinExport] = useState<string>(() => new Date().toISOString().split('T')[0])
@@ -45,13 +45,11 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
     const registros = await obtenerAsistenciasPorCursoYFecha(curso, estudiantes.map((e) => e.id), fecha)
     const map: Record<string, { estado: 'presente' | 'ausente' | 'excusa'; observacion?: string }> = {}
 
-    // Si ya hay guardados
     if (registros && registros.length > 0) {
       registros.forEach((r) => {
         map[r.estudiante_id] = { estado: r.estado, observacion: r.observacion }
       })
     } else {
-      // Por defecto todos presentes
       estudiantes.forEach((e) => {
         map[e.id] = { estado: 'presente' }
       })
@@ -109,15 +107,13 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
     await guardarAsistenciasLocal(registros)
     await cargarFechas()
     setGuardando(false)
-    setMensaje('✓ Asistencia guardada correctamente')
+    setMensaje('Asistencia guardada correctamente')
     setTimeout(() => setMensaje(''), 3000)
   }
 
-  // Generador de Excel XML nativo con estilos y bordes (.xls / .xlsx compatible)
   const generarExcelAsistencias = async () => {
     const todosRegistros = await obtenerTodasAsistenciasPorCurso(curso, estudiantes.map((e) => e.id))
 
-    // Filtrar fechas según selección del usuario
     let fechasAExportar: string[] = []
     if (modoExportar === 'dia_actual') {
       fechasAExportar = [fechaSeleccionada]
@@ -145,14 +141,12 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
       return
     }
 
-    // Mapa rápido: fecha -> estudianteId -> estado
     const mapPorFechaYEst: Record<string, Record<string, RegistroAsistencia>> = {}
     todosRegistros.forEach((r) => {
       if (!mapPorFechaYEst[r.fecha]) mapPorFechaYEst[r.fecha] = {}
       mapPorFechaYEst[r.fecha][r.estudiante_id] = r
     })
 
-    // Construir tabla HTML formateada para Excel
     let theadCols = `
       <th style="background-color:#2D5016; color:#ffffff; font-weight:bold; padding:10px; border:1px solid #c2b49d; width:50px; text-align:center;">#</th>
       <th style="background-color:#2D5016; color:#ffffff; font-weight:bold; padding:10px; border:1px solid #c2b49d; width:220px; text-align:left;">Nombre del Estudiante</th>
@@ -275,7 +269,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
 
   if (!isOpen) return null
 
-  // Métricas rápidas del día
   const totalAlumnos = estudiantes.length
   let presentesHoy = 0
   let ausentesHoy = 0
@@ -290,11 +283,10 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
       <div className="bg-white rounded-2xl border border-[#E8E0D0] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden paper-texture animate-in fade-in zoom-in-95 duration-150">
-        {/* Header Modal */}
         <div className="px-6 py-4 border-b border-[#E8E0D0] flex items-center justify-between bg-paper">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-paramo text-white flex items-center justify-center text-xl shadow-sm">
-              📋
+              <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
             </div>
             <div>
               <h2 className="font-display font-extrabold text-[19px] text-ink leading-tight">
@@ -310,11 +302,10 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white hover:bg-mist border border-[#E8E0D0] flex items-center justify-center text-ink/60 hover:text-ink font-bold text-sm transition"
           >
-            ✕
+            <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Pestañas */}
         <div className="px-6 pt-3 border-b border-[#E8E0D0] flex items-center justify-between gap-2 bg-white">
           <div className="flex gap-2">
             <button
@@ -325,7 +316,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                   : 'border-transparent text-ink/50 hover:text-ink'
               }`}
             >
-              📝 Registro de Asistencia
+              <ListOrdered className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Registro de Asistencia
             </button>
             <button
               onClick={() => setTab('exportar')}
@@ -335,7 +326,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                   : 'border-transparent text-ink/50 hover:text-ink'
               }`}
             >
-              📊 Exportar a Excel
+              <FileSpreadsheet className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Exportar a Excel
             </button>
           </div>
 
@@ -346,11 +337,9 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
           )}
         </div>
 
-        {/* Contenido según pestaña */}
         <div className="flex-1 overflow-y-auto p-6">
           {tab === 'pasar_lista' ? (
             <div>
-              {/* Barra de Selección de Fecha y Marcación rápida */}
               <div className="bg-paper border border-[#E8E0D0] rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-wrap">
                   <label className="text-xs font-bold text-ink/70 uppercase">Fecha:</label>
@@ -374,7 +363,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                         <option value="">Historial de fechas ({fechasDisponibles.length})</option>
                         {fechasDisponibles.map((f) => (
                           <option key={f} value={f}>
-                            📅 {f}
+                            <CalendarDays className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> {f}
                           </option>
                         ))}
                       </select>
@@ -399,7 +388,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                 </div>
               </div>
 
-              {/* Resumen numérico */}
               <div className="grid grid-cols-3 gap-3 mb-4 text-center">
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
@@ -427,7 +415,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                 </div>
               </div>
 
-              {/* Lista de Estudiantes para llamar */}
               <div className="space-y-2">
                 {estudiantes.map((est, idx) => {
                   const estado = asistenciasMap[est.id]?.estado || 'presente'
@@ -461,7 +448,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                         </div>
                       </div>
 
-                      {/* Botones de estado */}
                       <div className="flex items-center gap-1.5 bg-white p-1 rounded-full border border-[#E8E0D0] shadow-sm">
                         <button
                           type="button"
@@ -472,7 +458,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                               : 'text-ink/60 hover:bg-paper'
                           }`}
                         >
-                          ✓ Presente
+                          <Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Presente
                         </button>
                         <button
                           type="button"
@@ -483,7 +469,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                               : 'text-ink/60 hover:bg-paper'
                           }`}
                         >
-                          ✕ Ausente
+                          <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Ausente
                         </button>
                         <button
                           type="button"
@@ -494,11 +480,10 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                               : 'text-ink/60 hover:bg-paper'
                           }`}
                         >
-                          📋 Excusa
+                          <ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Excusa
                         </button>
                       </div>
 
-                      {/* Observación opcional */}
                       <div className="w-full sm:w-auto flex-1 max-w-xs">
                         <input
                           type="text"
@@ -514,18 +499,17 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
 
                 {estudiantes.length === 0 && (
                   <div className="text-center py-12 text-ink/40">
-                    <p className="text-3xl mb-2">📋</p>
+                    <p className="text-3xl mb-2"><ClipboardList className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></p>
                     <p className="font-bold text-sm">No hay estudiantes registrados en este curso.</p>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            /* Vista de Exportación */
             <div className="max-w-xl mx-auto space-y-6 py-4">
               <div className="bg-paper border border-[#E8E0D0] rounded-2xl p-6 text-center space-y-4">
                 <div className="w-14 h-14 rounded-2xl bg-terracota/10 text-terracota flex items-center justify-center text-3xl mx-auto">
-                  📊
+                  <FileSpreadsheet className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                 </div>
                 <h3 className="font-display font-extrabold text-[18px] text-ink">
                   Descargar Asistencia en Excel
@@ -535,7 +519,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                   totales de asistencia, fallas y porcentaje por cada estudiante del curso {curso}.
                 </p>
 
-                {/* Selección de modo */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left pt-2">
                   <label
                     className={`p-3.5 rounded-xl border-2 cursor-pointer transition flex flex-col gap-1 ${
@@ -592,7 +575,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                   </label>
                 </div>
 
-                {/* Selectores de rango */}
                 {modoExportar === 'rango' && (
                   <div className="bg-white border border-[#E8E0D0] rounded-xl p-4 flex items-center justify-center gap-3 flex-wrap">
                     <div className="text-left">
@@ -626,7 +608,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
                   disabled={estudiantes.length === 0}
                   className="w-full bg-terracota hover:bg-[#b03b22] text-white py-3 rounded-full font-bold text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <span>📥</span>
+                  <span><Download className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                   <span>Descargar Archivo Excel (.xls)</span>
                 </button>
               </div>
@@ -634,7 +616,6 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-3.5 border-t border-[#E8E0D0] bg-paper flex items-center justify-between">
           <button
             onClick={onClose}
@@ -649,7 +630,7 @@ export function ModalAsistencia({ isOpen, onClose, curso, estudiantes }: ModalAs
               disabled={guardando || estudiantes.length === 0}
               className="bg-paramo hover:bg-[#1e3a0f] text-white px-6 py-2 rounded-full text-xs font-bold shadow transition flex items-center gap-1.5 disabled:opacity-50"
             >
-              <span>💾</span>
+              <span><Save className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
               <span>{guardando ? 'Guardando...' : 'Guardar Asistencia del Día'}</span>
             </button>
           )}

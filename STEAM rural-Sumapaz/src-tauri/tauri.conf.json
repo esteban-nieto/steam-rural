@@ -37,6 +37,16 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "copyright": "© 2026 Gaddiel Esteban Nieto Rojas y Juan David Zacipa Garcia · Universidad de Cundinamarca",
+    "category": "Education",
+    "shortDescription": "STEAM Rural - Sumapaz: software educativo para talleres de robótica creativa",
+    "longDescription": "Aplicación de escritorio offline-first que acompaña talleres de robótica creativa con material reciclado y el fortalecimiento de habilidades STEAM en escuelas rurales del Sumapaz. Trabajo de grado de Ingeniería de Sistemas y Computación, Universidad de Cundinamarca.",
+    "homepage": "https://github.com/esteban-nieto/steam-rural",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico"
+      }
     }
   }
 }

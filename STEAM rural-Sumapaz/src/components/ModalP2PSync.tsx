@@ -18,6 +18,7 @@ import {
   normalizarCodigo,
   tokenDeAcceso,
 } from '../services/cifrado'
+import { Download, FolderOpen, Save, Upload, Wifi, X } from 'lucide-react'
 
 function resumenImportacion(r: { aplicados: number; conservados: number; eliminados: number }) {
   return `${r.aplicados} registros actualizados, ${r.conservados} más recientes conservados en este equipo y ${r.eliminados} eliminados.`
@@ -34,21 +35,18 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
   const [tab, setTab] = useState<'emitir' | 'recibir' | 'archivo'>('emitir')
   const [isDesktop, setIsDesktop] = useState(false)
 
-  // Estados para modo Emitir
   const [emitPin, setEmitPin] = useState('')
   const [localIp, setLocalIp] = useState('')
   const [servidorActivo, setServidorActivo] = useState(false)
   const [cargandoEmision, setCargandoEmision] = useState(false)
   const [mensajeEmision, setMensajeEmision] = useState('')
 
-  // Estados para modo Recibir
   const [targetIp, setTargetIp] = useState('')
   const [recibirPin, setRecibirPin] = useState('')
   const [cargandoRecepcion, setCargandoRecepcion] = useState(false)
   const [errorRecepcion, setErrorRecepcion] = useState('')
   const [exitoRecepcion, setExitoRecepcion] = useState('')
 
-  // Estados para modo Respaldo por Archivo (.json)
   const [mensajeArchivo, setMensajeArchivo] = useState('')
   const [claveArchivo, setClaveArchivo] = useState('')
 
@@ -66,7 +64,6 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     onClose()
   }
 
-  // Iniciar emisión en red local
   const handleIniciarEmision = async () => {
     setCargandoEmision(true)
     setMensajeEmision('')
@@ -83,14 +80,12 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setCargandoEmision(false)
   }
 
-  // Detener emisión
   const handleDetenerEmision = async () => {
     await stopP2pHost().catch(() => {})
     setServidorActivo(false)
     setMensajeEmision('')
   }
 
-  // Recibir datos de otro equipo
   const handleRecibirDatos = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!targetIp.trim() || !recibirPin.trim()) return
@@ -104,7 +99,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
       const sobre = JSON.parse(await receiveP2pData(targetIp.trim(), await tokenDeAcceso(codigo)))
       if (!esSobreCifrado(sobre)) throw new Error('El otro equipo envió datos sin cifrar. Actualiza la app en ambos equipos.')
       const r = await importarBaseDatosCompleta(JSON.parse(await descifrarSobre(sobre, codigo)), profesorId)
-      setExitoRecepcion(`✓ ¡Datos recibidos! ${resumenImportacion(r)}`)
+      setExitoRecepcion(`¡Datos recibidos! ${resumenImportacion(r)}`)
       if (onSyncCompletado) onSyncCompletado()
     } catch (err: any) {
       setErrorRecepcion(err?.message || String(err))
@@ -112,7 +107,6 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
     setCargandoRecepcion(false)
   }
 
-  // Exportar respaldo manual como archivo JSON (para USB)
   const handleExportarArchivo = async () => {
     try {
       if (claveArchivo.length < 8) {
@@ -130,13 +124,12 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
       downloadAnchor.click()
       downloadAnchor.remove()
       setTimeout(() => URL.revokeObjectURL(url), 2000)
-      setMensajeArchivo('✓ Respaldo cifrado generado. Sin esta clave no se podrá abrir.')
+      setMensajeArchivo('Respaldo cifrado generado. Sin esta clave no se podrá abrir.')
     } catch {
       setMensajeArchivo('Error al generar archivo de respaldo.')
     }
   }
 
-  // Importar respaldo manual desde archivo JSON
   const handleImportarArchivo = async (file: File) => {
     setMensajeArchivo('')
     try {
@@ -149,7 +142,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
         contenido = JSON.parse(await descifrarSobre(contenido, claveArchivo))
       }
       const r = await importarBaseDatosCompleta(contenido, profesorId)
-      setMensajeArchivo(`✓ Respaldo importado. ${resumenImportacion(r)}`)
+      setMensajeArchivo(`Respaldo importado. ${resumenImportacion(r)}`)
       if (onSyncCompletado) onSyncCompletado()
     } catch (err: any) {
       setMensajeArchivo(
@@ -165,10 +158,9 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm animate-fadeIn">
       <div className="relative bg-white rounded-paper border border-[#E8E0D0] shadow-lift w-full max-w-lg overflow-hidden paper-texture">
-        {/* Cabecera */}
         <div className="p-5 border-b border-[#E8E0D0] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">📡</span>
+            <span className="text-xl"><Wifi className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
             <div>
               <h3 className="font-display font-bold text-ink text-base">
                 Sincronización en el Aula (P2P)
@@ -182,11 +174,10 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
             onClick={handleCerrar}
             className="w-8 h-8 rounded-full bg-paper hover:bg-mist text-ink/60 hover:text-ink flex items-center justify-center font-bold"
           >
-            ✕
+            <X className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Pestañas */}
         <div className="flex border-b border-[#E8E0D0] bg-paper/50">
           <button
             onClick={() => setTab('emitir')}
@@ -196,7 +187,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                 : 'border-transparent text-ink/60 hover:text-ink'
             }`}
           >
-            📤 Compartir / Emitir
+            <Upload className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Compartir / Emitir
           </button>
           <button
             onClick={() => setTab('recibir')}
@@ -206,7 +197,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                 : 'border-transparent text-ink/60 hover:text-ink'
             }`}
           >
-            📥 Recibir en este equipo
+            <Download className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Recibir en este equipo
           </button>
           <button
             onClick={() => setTab('archivo')}
@@ -216,13 +207,11 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                 : 'border-transparent text-ink/60 hover:text-ink'
             }`}
           >
-            💾 Archivo / USB
+            <Save className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Archivo / USB
           </button>
         </div>
 
-        {/* Contenido según pestaña */}
         <div className="p-6">
-          {/* TAB 1: EMITIR */}
           {tab === 'emitir' && (
             <div className="space-y-4">
               <p className="text-xs text-ink/70">
@@ -233,7 +222,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
               {!servidorActivo ? (
                 <div className="bg-paper p-5 rounded-2xl border border-[#E8E0D0] text-center space-y-3">
                   <div className="w-12 h-12 bg-paramo/10 text-paramo rounded-xl flex items-center justify-center mx-auto text-2xl">
-                    📤
+                    <Upload className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
                   </div>
                   <h4 className="font-display font-bold text-ink text-sm">
                     Preparar emisión de datos
@@ -297,7 +286,6 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
             </div>
           )}
 
-          {/* TAB 2: RECIBIR */}
           {tab === 'recibir' && (
             <form onSubmit={handleRecibirDatos} className="space-y-4">
               <p className="text-xs text-ink/70">
@@ -350,12 +338,11 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
                 disabled={cargandoRecepcion}
                 className="w-full bg-terracota text-white py-2.5 rounded-full text-xs font-bold hover:bg-[#a65e2a] transition shadow-paper disabled:opacity-50"
               >
-                {cargandoRecepcion ? 'Conectando y recibiendo datos...' : '📥 Descargar e Importar Datos'}
+                {cargandoRecepcion ? 'Conectando y recibiendo datos...' : 'Descargar e Importar Datos'}
               </button>
             </form>
           )}
 
-          {/* TAB 3: RESPALDO POR ARCHIVO / USB */}
           {tab === 'archivo' && (
             <div className="space-y-4">
               <p className="text-xs text-ink/70">
@@ -383,7 +370,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="bg-paper p-4 rounded-xl border border-[#E8E0D0] flex flex-col justify-between gap-3 text-center">
                   <div>
-                    <span className="text-2xl block mb-1">💾</span>
+                    <span className="text-2xl block mb-1"><Save className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                     <h5 className="font-display font-bold text-xs text-ink">Exportar a archivo</h5>
                     <p className="text-[11px] text-ink/50 mt-1">
                       Crea un archivo .json con tus estudiantes, notas y actividades.
@@ -400,7 +387,7 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
 
                 <div className="bg-paper p-4 rounded-xl border border-[#E8E0D0] flex flex-col justify-between gap-3 text-center">
                   <div>
-                    <span className="text-2xl block mb-1">📂</span>
+                    <span className="text-2xl block mb-1"><FolderOpen className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /></span>
                     <h5 className="font-display font-bold text-xs text-ink">Importar de archivo</h5>
                     <p className="text-[11px] text-ink/50 mt-1">
                       Carga un archivo .json desde tu memoria USB o disco.
@@ -431,7 +418,6 @@ export function ModalP2PSync({ isOpen, onClose, onSyncCompletado }: ModalP2PSync
           )}
         </div>
 
-        {/* Pie de modal */}
         <div className="bg-paper p-4 border-t border-[#E8E0D0] flex items-center justify-between text-[11px] text-ink/50">
           <span>Modo {isDesktop ? 'Escritorio (Nativo)' : 'Web (Simulador)'}</span>
           <button

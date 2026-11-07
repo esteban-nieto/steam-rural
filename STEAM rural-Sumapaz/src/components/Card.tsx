@@ -1,3 +1,4 @@
+import { Check, FileText } from 'lucide-react'
 type CardProps = {
   title: string
   description?: string
@@ -22,13 +23,13 @@ export function Card({ title, description, image, onClick, badge, meta, progress
           <img src={image} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" aria-hidden="true" />
         ) : (
           <div className="text-5xl opacity-80 group-hover:scale-110 transition duration-300" aria-hidden="true">
-            📄
+            <FileText className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" />
           </div>
         )}
         {badge && (
           <span className="absolute top-3 left-3 bg-terracota text-white text-[11px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full">{badge}</span>
         )}
-        {isCompleted && <span className="absolute top-3 right-8 bg-moss text-white text-[11px] font-bold px-2 py-1 rounded-full">✓ Completado</span>}
+        {isCompleted && <span className="absolute top-3 right-8 bg-moss text-white text-[11px] font-bold px-2 py-1 rounded-full"><Check className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Completado</span>}
       </div>
       <div className="p-4">
         <h3 className="font-display font-bold text-ink text-[17px] leading-tight">{title}</h3>

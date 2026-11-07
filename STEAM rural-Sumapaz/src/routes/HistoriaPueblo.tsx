@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
+import { Maximize } from 'lucide-react'
 
 const PARTES = [
   {
@@ -153,7 +154,7 @@ export function HistoriaPueblo({ onBack }: { onBack: () => void }) {
               className="px-5 py-2.5 rounded-full bg-white border border-[#E8E0D0] text-[13px] font-semibold hover:bg-paper disabled:opacity-40 flex items-center gap-1.5"
               aria-label="Pantalla completa"
             >
-              ⛶ Pantalla completa
+              <Maximize className="inline-block w-[1em] h-[1em] align-[-0.125em]" aria-hidden="true" /> Pantalla completa
             </button>
           </div>
 
