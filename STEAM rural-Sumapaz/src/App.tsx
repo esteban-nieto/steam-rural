@@ -162,12 +162,12 @@ export default function App() {
                         Historia de Pueblo Soleado
                       </h3>
                       <p className="text-[12px] text-white/90">
-                        Aprende sobre energía y comunidad con los videos animados del pueblo
+                        Aprende sobre energía y comunidad con el video animado del pueblo
                       </p>
                     </div>
                   </div>
                   <span className="hidden sm:inline-flex items-center gap-1 font-bold text-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition">
-                    Ver videos ▶
+                    Ver historia ▶
                   </span>
                 </button>
               </div>

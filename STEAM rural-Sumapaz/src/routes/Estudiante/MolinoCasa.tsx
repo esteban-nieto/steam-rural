@@ -136,7 +136,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
         </div>
 
         <div className="p-5">
-          <div className="aspect-video bg-black rounded-2xl overflow-hidden relative border border-[#E8E0D0]">
+          <div className="aspect-video w-full max-w-[calc(52vh*16/9)] mx-auto bg-black rounded-2xl overflow-hidden relative border border-[#E8E0D0]">
             <video
               ref={videoRef}
               src={videoSrc}
@@ -210,7 +210,7 @@ export function MolinoCasa({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      <p className="text-center text-[11px] text-ink/40 mt-4">Video se pausa automáticamente al final del paso. Usa Repetir para verlo de nuevo.</p>
+      <p className="text-center text-[11px] text-ink/40 mt-4">Video se pausa automáticamente al final del paso. Usa Reproducir para verlo de nuevo.</p>
     </Layout>
   )
 }

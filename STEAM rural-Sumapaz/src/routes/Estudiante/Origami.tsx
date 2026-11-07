@@ -45,7 +45,7 @@ export function OrigamiDetalle({ onBack }: { onBack: () => void }) {
         </div>
 
         <div className="p-5">
-          <div className="aspect-[4/3] bg-gradient-to-br from-mist/50 to-white rounded-2xl border border-[#E8E0D0] flex items-center justify-center overflow-hidden relative tape">
+          <div className="h-[45vh] min-h-[220px] max-h-[440px] bg-gradient-to-br from-mist/50 to-white rounded-2xl border border-[#E8E0D0] flex items-center justify-center overflow-hidden relative tape">
             <img
               src={PASOS_EJEMPLO[paso].img}
               alt={`Paso ${paso + 1}`}

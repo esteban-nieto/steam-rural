@@ -42,7 +42,7 @@ export function EstudianteHome({
                 Historia de Pueblo Soleado
               </h3>
               <p className="text-[13px] text-white/90 mt-0.5">
-                Mira las aventuras en video: Parte 1 (El Molino) y Parte 2 (El Tractor).
+                Mira en video cómo el molino le dio luz al pueblo.
               </p>
             </div>
           </div>
